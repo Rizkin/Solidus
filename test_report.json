@@ -1,0 +1,48 @@
+{
+  "start_time": 1754344679.465325,
+  "phases": {
+    "unit": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]",
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]",
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]",
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]",
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]"
+      ],
+      "duration": 3.383871078491211
+    },
+    "integration": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]"
+      ],
+      "duration": 0.5495166778564453
+    },
+    "performance": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "errors": [
+        "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]"
+      ],
+      "duration": 0.5592968463897705
+    }
+  },
+  "summary": {
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "success_rate": 0,
+    "phases_run": 3
+  },
+  "coverage": {},
+  "performance": {},
+  "end_time": 1754344683.9581282,
+  "total_duration": 4.49280309677124
+}

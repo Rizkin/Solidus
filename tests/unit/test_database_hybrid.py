@@ -12,7 +12,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch, call
 from typing import Dict, Any, List, Optional
 
-from src.utils.database_hybrid import DatabaseHybridService
+from src.utils.database_hybrid import DatabaseService
 from tests.fixtures.mock_data import (
     SAMPLE_WORKFLOW, SAMPLE_BLOCKS, MOCK_DATABASE_RESPONSES
 )
@@ -21,13 +21,13 @@ from tests.fixtures.mock_responses import (
 )
 
 
-class TestDatabaseHybridService:
-    """Test suite for DatabaseHybridService."""
+class TestDatabaseService:
+    """Test suite for DatabaseService."""
 
     @pytest.fixture(autouse=True)
     def setup_database_service(self):
         """Set up database service for each test."""
-        self.db_service = DatabaseHybridService()
+        self.db_service = DatabaseService()
 
     # ========================================
     # 1. Supabase Client Tests
@@ -42,7 +42,7 @@ class TestDatabaseHybridService:
             mock_create_client.return_value = mock_client
             
             # Initialize database service
-            db_service = DatabaseHybridService()
+            db_service = DatabaseService()
             await db_service.initialize()
             
             # Verify client creation
@@ -61,7 +61,7 @@ class TestDatabaseHybridService:
             # Mock connection failure
             mock_create_client.side_effect = Exception("Connection failed")
             
-            db_service = DatabaseHybridService()
+            db_service = DatabaseService()
             await db_service.initialize()
             
             # Verify fallback to mock data
@@ -81,7 +81,7 @@ class TestDatabaseHybridService:
                 MagicMock()  # Success on third attempt
             ]
             
-            db_service = DatabaseHybridService(max_retries=3, retry_delay=0.1)
+            db_service = DatabaseService()
             await db_service.initialize()
             
             # Verify retries occurred
@@ -607,7 +607,7 @@ class TestDatabaseHybridService:
         
         with patch('supabase.create_client', side_effect=mock_connection_counter):
             # Simulate multiple database services
-            services = [DatabaseHybridService() for _ in range(10)]
+            services = [DatabaseService() for _ in range(10)]
             
             for service in services:
                 await service.initialize()

@@ -1,5 +1,5 @@
 """
-Comprehensive tests for AgentForgeStateGenerator class.
+Comprehensive tests for StateGenerator class.
 
 Tests AI state generation, edge inference, workflow type determination,
 fallback generation, state enhancement, and error handling.
@@ -13,7 +13,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any, List
 
-from src.services.state_generator import AgentForgeStateGenerator
+from src.services.state_generator import StateGenerator
 from tests.fixtures.mock_data import (
     SAMPLE_WORKFLOW, SAMPLE_BLOCKS, EXPECTED_STATE_STRUCTURE
 )
@@ -22,13 +22,13 @@ from tests.fixtures.mock_responses import (
 )
 
 
-class TestAgentForgeStateGenerator:
-    """Test suite for AgentForgeStateGenerator."""
+class TestStateGenerator:
+    """Test suite for StateGenerator."""
 
     @pytest.fixture(autouse=True)
     def setup_generator(self, mock_db_service):
         """Set up state generator for each test."""
-        self.generator = AgentForgeStateGenerator(mock_db_service)
+        self.generator = StateGenerator()
         self.mock_db = mock_db_service
 
     @pytest.mark.unit
