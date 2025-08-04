@@ -21,7 +21,7 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/redoc",
+      "src": "/redoc", 
       "dest": "api/index.py"
     },
     {
@@ -46,11 +46,5 @@
   "regions": ["iad1", "sfo1", "lhr1"],
   "github": {
     "silent": false
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    }
-  ]
-} 
+  }
+}
