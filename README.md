@@ -277,6 +277,28 @@ open http://localhost:3000
 - **🔍 Search**: Natural language workflow search
 - **📱 Responsive**: Perfect on all devices
 
+## 📚 **Documentation**
+
+### **📐 Technical Architecture** ⭐ **NEW!**
+- **[Complete Technical Architecture](/docs/TECHNICAL_ARCHITECTURE.md)** - Comprehensive system architecture with detailed diagrams
+  - High-level system overview with visual diagrams
+  - Component architecture breakdown
+  - Data flow sequences and AI integration
+  - Database schema with relationships
+  - Multi-level caching & performance architecture
+  - Security framework and deployment patterns
+  - 12 detailed sections with Mermaid diagrams
+
+### **📡 API Documentation**
+- **[Interactive API Docs](https://solidus-olive.vercel.app/docs)** - Swagger UI with live testing
+- **[ReDoc Documentation](https://solidus-olive.vercel.app/redoc)** - Clean API reference
+- **[OpenAPI Schema](https://solidus-olive.vercel.app/openapi.json)** - Machine-readable specification
+
+### **🗄️ Database & Deployment**
+- **[Database Schema](/scripts/create_supabase_schema.sql)** - Complete SQL schema
+- **[Sample Data](/scripts/sample_data_inserts.sql)** - Example data inserts
+- **[Vercel Configuration](/vercel.json)** - Deployment configuration
+
 ## 🤝 **Contributing**
 
 1. Fork the repository
