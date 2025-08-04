@@ -102,6 +102,61 @@ class TemplateService:
                 "estimated_runtime": "24/7",
                 "customizable_fields": ["channels", "triggers", "message_templates"],
                 "template_data": self._get_notification_template()
+            },
+            "social_media_automation": {
+                "name": "social_media_automation",
+                "display_name": "Social Media Automation",
+                "description": "Automated posting, engagement, and content scheduling",
+                "category": "Social Media",
+                "tags": ["social", "automation", "content", "scheduling", "engagement"],
+                "complexity": "Medium",
+                "estimated_runtime": "24/7",
+                "customizable_fields": ["platforms", "posting_schedule", "content_types"],
+                "template_data": self._get_social_media_template()
+            },
+            "ecommerce_automation": {
+                "name": "ecommerce_automation",
+                "display_name": "E-commerce Order Automation",
+                "description": "Order processing, inventory management, and customer notifications",
+                "category": "E-commerce",
+                "tags": ["ecommerce", "orders", "inventory", "automation", "customers"],
+                "complexity": "Complex",
+                "estimated_runtime": "24/7",
+                "customizable_fields": ["store_platform", "payment_gateway", "fulfillment_service"],
+                "template_data": self._get_ecommerce_template()
+            },
+            "hr_recruitment": {
+                "name": "hr_recruitment",
+                "display_name": "HR Recruitment Automation",
+                "description": "Resume screening, candidate evaluation, and interview scheduling",
+                "category": "Human Resources",
+                "tags": ["hr", "recruitment", "screening", "interviews", "candidates"],
+                "complexity": "Complex",
+                "estimated_runtime": "On-demand",
+                "customizable_fields": ["job_requirements", "screening_criteria", "interview_types"],
+                "template_data": self._get_hr_recruitment_template()
+            },
+            "financial_analysis": {
+                "name": "financial_analysis",
+                "display_name": "Financial Analysis & Reporting",
+                "description": "Automated financial data analysis and report generation",
+                "category": "Finance",
+                "tags": ["finance", "analysis", "reporting", "data", "insights"],
+                "complexity": "Complex",
+                "estimated_runtime": "Scheduled",
+                "customizable_fields": ["data_sources", "report_frequency", "analysis_metrics"],
+                "template_data": self._get_financial_analysis_template()
+            },
+            "project_management": {
+                "name": "project_management",
+                "display_name": "Project Management Automation",
+                "description": "Task assignment, progress tracking, and team notifications",
+                "category": "Project Management",
+                "tags": ["projects", "tasks", "team", "tracking", "notifications"],
+                "complexity": "Medium",
+                "estimated_runtime": "24/7",
+                "customizable_fields": ["project_tools", "team_size", "notification_rules"],
+                "template_data": self._get_project_management_template()
             }
         }
     
@@ -666,6 +721,298 @@ class TemplateService:
                 "ALERT_THRESHOLD": "high",
                 "SLACK_CHANNEL": "#alerts",
                 "EMAIL_RECIPIENTS": ["admin@company.com"]
+            }
+        }
+
+    def _get_social_media_template(self) -> Dict[str, Any]:
+        """Social media automation template"""
+        return {
+            "blocks": {
+                "starter_1": {
+                    "id": "starter_1",
+                    "type": "starter",
+                    "name": "Content Scheduler",
+                    "position_x": 100,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "startWorkflow": "schedule",
+                        "scheduleType": "interval",
+                        "interval": "2h"
+                    }
+                },
+                "agent_1": {
+                    "id": "agent_1",
+                    "type": "agent",
+                    "name": "Content Creator",
+                    "position_x": 300,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are a social media content creator. Create engaging posts for different platforms with appropriate hashtags and timing.",
+                        "temperature": 0.8
+                    }
+                },
+                "api_1": {
+                    "id": "api_1",
+                    "type": "api",
+                    "name": "Social Media Publisher",
+                    "position_x": 500,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "endpoint": "{{variables.SOCIAL_API_ENDPOINT}}",
+                        "method": "POST",
+                        "headers": {
+                            "Authorization": "Bearer {{env.SOCIAL_API_KEY}}"
+                        }
+                    }
+                }
+            },
+            "edges": [
+                {"from": "starter_1", "to": "agent_1"},
+                {"from": "agent_1", "to": "api_1"}
+            ],
+            "variables": {
+                "PLATFORMS": "twitter,linkedin,instagram",
+                "POSTING_SCHEDULE": "morning,afternoon,evening",
+                "CONTENT_TYPES": "text,image,video"
+            }
+        }
+
+    def _get_ecommerce_template(self) -> Dict[str, Any]:
+        """E-commerce automation template"""
+        return {
+            "blocks": {
+                "starter_1": {
+                    "id": "starter_1",
+                    "type": "starter",
+                    "name": "Order Webhook",
+                    "position_x": 100,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "startWorkflow": "webhook",
+                        "webhookPath": "/order-received",
+                        "method": "POST"
+                    }
+                },
+                "agent_1": {
+                    "id": "agent_1",
+                    "type": "agent",
+                    "name": "Order Processor",
+                    "position_x": 300,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are an e-commerce order processor. Validate orders, check inventory, and process payments.",
+                        "temperature": 0.3
+                    }
+                },
+                "api_1": {
+                    "id": "api_1",
+                    "type": "api",
+                    "name": "Inventory System",
+                    "position_x": 500,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "endpoint": "{{variables.INVENTORY_API}}",
+                        "method": "PUT",
+                        "headers": {
+                            "Authorization": "Bearer {{env.INVENTORY_TOKEN}}"
+                        }
+                    }
+                },
+                "output_1": {
+                    "id": "output_1",
+                    "type": "output",
+                    "name": "Customer Notification",
+                    "position_x": 700,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "outputType": "email",
+                        "template": "order_confirmation"
+                    }
+                }
+            },
+            "edges": [
+                {"from": "starter_1", "to": "agent_1"},
+                {"from": "agent_1", "to": "api_1"},
+                {"from": "api_1", "to": "output_1"}
+            ],
+            "variables": {
+                "STORE_PLATFORM": "shopify",
+                "PAYMENT_GATEWAY": "stripe",
+                "FULFILLMENT_SERVICE": "auto"
+            }
+        }
+
+    def _get_hr_recruitment_template(self) -> Dict[str, Any]:
+        """HR recruitment template"""
+        return {
+            "blocks": {
+                "starter_1": {
+                    "id": "starter_1",
+                    "type": "starter",
+                    "name": "Resume Upload",
+                    "position_x": 100,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "startWorkflow": "webhook",
+                        "webhookPath": "/resume-upload",
+                        "method": "POST"
+                    }
+                },
+                "agent_1": {
+                    "id": "agent_1",
+                    "type": "agent",
+                    "name": "Resume Screener",
+                    "position_x": 300,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are an expert HR recruiter. Screen resumes for job requirements and rank candidates.",
+                        "temperature": 0.4
+                    }
+                },
+                "agent_2": {
+                    "id": "agent_2",
+                    "type": "agent",
+                    "name": "Interview Scheduler",
+                    "position_x": 500,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are an interview coordinator. Schedule interviews and send calendar invites.",
+                        "temperature": 0.5
+                    }
+                }
+            },
+            "edges": [
+                {"from": "starter_1", "to": "agent_1"},
+                {"from": "agent_1", "to": "agent_2"}
+            ],
+            "variables": {
+                "JOB_REQUIREMENTS": "Python, AI, 3+ years",
+                "SCREENING_CRITERIA": "technical_skills,experience,cultural_fit",
+                "INTERVIEW_TYPES": "technical,behavioral"
+            }
+        }
+
+    def _get_financial_analysis_template(self) -> Dict[str, Any]:
+        """Financial analysis template"""
+        return {
+            "blocks": {
+                "starter_1": {
+                    "id": "starter_1",
+                    "type": "starter",
+                    "name": "Market Data Monitor",
+                    "position_x": 100,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "startWorkflow": "schedule",
+                        "scheduleType": "cron",
+                        "cronExpression": "0 9 * * 1-5"
+                    }
+                },
+                "api_1": {
+                    "id": "api_1",
+                    "type": "api",
+                    "name": "Financial Data API",
+                    "position_x": 300,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "endpoint": "{{variables.FINANCIAL_API_URL}}",
+                        "method": "GET",
+                        "headers": {
+                            "X-API-KEY": "{{env.FINANCIAL_API_KEY}}"
+                        }
+                    }
+                },
+                "agent_1": {
+                    "id": "agent_1",
+                    "type": "agent",
+                    "name": "Financial Analyst",
+                    "position_x": 500,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are a financial analyst. Analyze market data, identify trends, and provide investment insights.",
+                        "temperature": 0.3
+                    }
+                }
+            },
+            "edges": [
+                {"from": "starter_1", "to": "api_1"},
+                {"from": "api_1", "to": "agent_1"}
+            ],
+            "variables": {
+                "FINANCIAL_API_URL": "https://api.marketdata.com/v1/stocks",
+                "ANALYSIS_METRICS": "revenue,profit,growth,volatility",
+                "REPORT_FREQUENCY": "daily"
+            }
+        }
+
+    def _get_project_management_template(self) -> Dict[str, Any]:
+        """Project management template"""
+        return {
+            "blocks": {
+                "starter_1": {
+                    "id": "starter_1",
+                    "type": "starter",
+                    "name": "Task Creation",
+                    "position_x": 100,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "startWorkflow": "webhook",
+                        "webhookPath": "/task-created",
+                        "method": "POST"
+                    }
+                },
+                "agent_1": {
+                    "id": "agent_1",
+                    "type": "agent",
+                    "name": "Task Manager",
+                    "position_x": 300,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "model": "gpt-4",
+                        "systemPrompt": "You are a project manager. Assign tasks, set priorities, and track progress.",
+                        "temperature": 0.5
+                    }
+                },
+                "api_1": {
+                    "id": "api_1",
+                    "type": "api",
+                    "name": "Project Management Tool",
+                    "position_x": 500,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "endpoint": "{{variables.PROJECT_API_URL}}",
+                        "method": "POST",
+                        "headers": {
+                            "Authorization": "Bearer {{env.PROJECT_TOKEN}}"
+                        }
+                    }
+                },
+                "output_1": {
+                    "id": "output_1",
+                    "type": "output",
+                    "name": "Team Notification",
+                    "position_x": 700,
+                    "position_y": 100,
+                    "sub_blocks": {
+                        "outputType": "slack",
+                        "channel": "{{variables.TEAM_CHANNEL}}"
+                    }
+                }
+            },
+            "edges": [
+                {"from": "starter_1", "to": "agent_1"},
+                {"from": "agent_1", "to": "api_1"},
+                {"from": "api_1", "to": "output_1"}
+            ],
+            "variables": {
+                "PROJECT_TOOLS": "jira",
+                "TEAM_CHANNEL": "#development",
+                "NOTIFICATION_RULES": "task_assigned,deadline_reminder"
             }
         }
 
