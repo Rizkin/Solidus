@@ -1,0 +1,239 @@
+{
+  "input_file": "input/workflow_input.txt",
+  "workflow_id": "demo-trading-bot-001",
+  "workflow_name": "Crypto Trading Bot",
+  "timestamp": "2025-08-04T22:58:52.146945",
+  "input_data": {
+    "workflow": {
+      "id": "demo-trading-bot-001",
+      "name": "Crypto Trading Bot",
+      "description": "Automated BTC/USD trading with AI decisions",
+      "user_id": "demo-user",
+      "workspace_id": "demo-workspace",
+      "color": "#FF6B6B"
+    },
+    "blocks": [
+      {
+        "id": "starter-001",
+        "type": "starter",
+        "name": "Price Monitor",
+        "position_x": 100.0,
+        "position_y": 200.0,
+        "config": {
+          "scheduleType": "minutes",
+          "interval": "5"
+        }
+      },
+      {
+        "id": "api-001",
+        "type": "api",
+        "name": "Fetch BTC Price",
+        "position_x": 300.0,
+        "position_y": 200.0,
+        "config": {
+          "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin",
+          "method": "GET"
+        }
+      },
+      {
+        "id": "agent-001",
+        "type": "agent",
+        "name": "Trading AI",
+        "position_x": 500.0,
+        "position_y": 200.0,
+        "config": {
+          "model": "gpt-4",
+          "prompt": "Analyze BTC price and decide: BUY/SELL/HOLD",
+          "temperature": 0.3
+        }
+      },
+      {
+        "id": "output-001",
+        "type": "output",
+        "name": "Execute Trade",
+        "position_x": 700.0,
+        "position_y": 200.0,
+        "config": {
+          "type": "webhook",
+          "url": "https://api.trading.com/execute"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "source": "starter-001",
+        "target": "api-001"
+      },
+      {
+        "source": "api-001",
+        "target": "agent-001"
+      },
+      {
+        "source": "agent-001",
+        "target": "output-001"
+      }
+    ]
+  },
+  "generated_state": {
+    "blocks": {
+      "starter_1": {
+        "id": "starter_1",
+        "type": "starter",
+        "name": "Start Workflow",
+        "position_x": 100,
+        "position_y": 100,
+        "sub_blocks": {
+          "startWorkflow": "manual"
+        }
+      },
+      "agent_1": {
+        "id": "agent_1",
+        "type": "agent",
+        "name": "Processing Agent",
+        "position_x": 300,
+        "position_y": 100,
+        "sub_blocks": {
+          "model": "gpt-4",
+          "systemPrompt": "Process the input and provide helpful output",
+          "temperature": 0.7
+        }
+      },
+      "output_1": {
+        "id": "output_1",
+        "type": "output",
+        "name": "Result Output",
+        "position_x": 500,
+        "position_y": 100,
+        "sub_blocks": {
+          "outputType": "webhook",
+          "url": "{{env.WEBHOOK_URL}}"
+        }
+      }
+    },
+    "edges": [
+      {
+        "from": "starter_1",
+        "to": "agent_1"
+      },
+      {
+        "from": "agent_1",
+        "to": "output_1"
+      }
+    ],
+    "subflows": {},
+    "variables": {
+      "WORKFLOW_NAME": "Basic Workflow"
+    },
+    "metadata": {
+      "version": "1.0.0",
+      "createdAt": "2025-08-04T22:58:52.146029Z",
+      "updatedAt": "2025-08-04T22:58:52.146035Z",
+      "pattern": "basic"
+    }
+  },
+  "validation_report": {
+    "workflow_id": "demo-trading-bot-001",
+    "overall_valid": true,
+    "agent_forge_compliance": true,
+    "validation_results": [
+      {
+        "validator_name": "validate_schema",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_block_types",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "total_blocks": 3,
+          "block_types": [
+            "output",
+            "agent",
+            "starter"
+          ]
+        }
+      },
+      {
+        "validator_name": "validate_starter_blocks",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "starter_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_agent_configuration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "agent_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_api_integration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "api_count": 0
+        }
+      },
+      {
+        "validator_name": "validate_edge_connectivity",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "edge_count": 2,
+          "connected_blocks": 3
+        }
+      },
+      {
+        "validator_name": "validate_workflow_patterns",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "detected_patterns": []
+        }
+      },
+      {
+        "validator_name": "validate_position_bounds",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_subblock_structure",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      }
+    ],
+    "summary": {
+      "total_validators": 9,
+      "passed_validators": 9,
+      "total_errors": 0,
+      "total_warnings": 0,
+      "block_count": 3,
+      "block_types": {
+        "starter": 1,
+        "agent": 1,
+        "output": 1
+      },
+      "edge_count": 2,
+      "has_variables": true,
+      "has_metadata": true
+    },
+    "validated_at": "2025-08-04T22:58:52.146884Z"
+  },
+  "status": "success"
+}

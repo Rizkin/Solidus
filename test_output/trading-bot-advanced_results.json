@@ -1,0 +1,291 @@
+{
+  "input_file": "input/trading_bot.txt",
+  "workflow_id": "trading-bot-advanced",
+  "workflow_name": "Advanced Crypto Trading Bot",
+  "timestamp": "2025-08-04T22:58:37.644580",
+  "input_data": {
+    "workflow": {
+      "id": "trading-bot-advanced",
+      "name": "Advanced Crypto Trading Bot",
+      "description": "Multi-exchange arbitrage trading bot",
+      "user_id": "trader-001",
+      "workspace_id": "crypto-workspace",
+      "color": "#FF5733"
+    },
+    "blocks": [
+      {
+        "id": "schedule-1",
+        "type": "starter",
+        "name": "1-Min Schedule",
+        "position_x": 50.0,
+        "position_y": 200.0,
+        "config": {
+          "scheduleType": "minutes",
+          "interval": "1"
+        }
+      },
+      {
+        "id": "binance-api",
+        "type": "api",
+        "name": "Binance Price",
+        "position_x": 200.0,
+        "position_y": 100.0,
+        "config": {
+          "url": "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+        }
+      },
+      {
+        "id": "coinbase-api",
+        "type": "api",
+        "name": "Coinbase Price",
+        "position_x": 200.0,
+        "position_y": 200.0,
+        "config": {
+          "url": "https://api.coinbase.com/v2/prices/BTC-USD/spot"
+        }
+      },
+      {
+        "id": "kraken-api",
+        "type": "api",
+        "name": "Kraken Price",
+        "position_x": 200.0,
+        "position_y": 300.0,
+        "config": {
+          "url": "https://api.kraken.com/0/public/Ticker?pair=XBTUSD"
+        }
+      },
+      {
+        "id": "arbitrage-agent",
+        "type": "agent",
+        "name": "Arbitrage Analyzer",
+        "position_x": 400.0,
+        "position_y": 200.0,
+        "config": {
+          "model": "gpt-4",
+          "prompt": "Analyze price differences and find arbitrage opportunities",
+          "temperature": 0.2
+        }
+      },
+      {
+        "id": "risk-agent",
+        "type": "agent",
+        "name": "Risk Manager",
+        "position_x": 600.0,
+        "position_y": 200.0,
+        "config": {
+          "model": "gpt-4",
+          "prompt": "Assess risk levels and position sizing",
+          "temperature": 0.1
+        }
+      },
+      {
+        "id": "trade-executor",
+        "type": "output",
+        "name": "Execute Trades",
+        "position_x": 800.0,
+        "position_y": 200.0,
+        "config": {
+          "type": "webhook",
+          "url": "https://trading-api.internal/execute",
+          "auth": "bearer"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "source": "schedule-1",
+        "target": "binance-api"
+      },
+      {
+        "source": "schedule-1",
+        "target": "coinbase-api"
+      },
+      {
+        "source": "schedule-1",
+        "target": "kraken-api"
+      },
+      {
+        "source": "binance-api",
+        "target": "arbitrage-agent"
+      },
+      {
+        "source": "coinbase-api",
+        "target": "arbitrage-agent"
+      },
+      {
+        "source": "kraken-api",
+        "target": "arbitrage-agent"
+      },
+      {
+        "source": "arbitrage-agent",
+        "target": "risk-agent"
+      },
+      {
+        "source": "risk-agent",
+        "target": "trade-executor"
+      }
+    ]
+  },
+  "generated_state": {
+    "blocks": {
+      "starter_1": {
+        "id": "starter_1",
+        "type": "starter",
+        "name": "Start Workflow",
+        "position_x": 100,
+        "position_y": 100,
+        "sub_blocks": {
+          "startWorkflow": "manual"
+        }
+      },
+      "agent_1": {
+        "id": "agent_1",
+        "type": "agent",
+        "name": "Processing Agent",
+        "position_x": 300,
+        "position_y": 100,
+        "sub_blocks": {
+          "model": "gpt-4",
+          "systemPrompt": "Process the input and provide helpful output",
+          "temperature": 0.7
+        }
+      },
+      "output_1": {
+        "id": "output_1",
+        "type": "output",
+        "name": "Result Output",
+        "position_x": 500,
+        "position_y": 100,
+        "sub_blocks": {
+          "outputType": "webhook",
+          "url": "{{env.WEBHOOK_URL}}"
+        }
+      }
+    },
+    "edges": [
+      {
+        "from": "starter_1",
+        "to": "agent_1"
+      },
+      {
+        "from": "agent_1",
+        "to": "output_1"
+      }
+    ],
+    "subflows": {},
+    "variables": {
+      "WORKFLOW_NAME": "Basic Workflow"
+    },
+    "metadata": {
+      "version": "1.0.0",
+      "createdAt": "2025-08-04T22:58:37.644490Z",
+      "updatedAt": "2025-08-04T22:58:37.644492Z",
+      "pattern": "basic"
+    }
+  },
+  "validation_report": {
+    "workflow_id": "trading-bot-advanced",
+    "overall_valid": true,
+    "agent_forge_compliance": true,
+    "validation_results": [
+      {
+        "validator_name": "validate_schema",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_block_types",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "total_blocks": 3,
+          "block_types": [
+            "agent",
+            "output",
+            "starter"
+          ]
+        }
+      },
+      {
+        "validator_name": "validate_starter_blocks",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "starter_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_agent_configuration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "agent_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_api_integration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "api_count": 0
+        }
+      },
+      {
+        "validator_name": "validate_edge_connectivity",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "edge_count": 2,
+          "connected_blocks": 3
+        }
+      },
+      {
+        "validator_name": "validate_workflow_patterns",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "detected_patterns": []
+        }
+      },
+      {
+        "validator_name": "validate_position_bounds",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_subblock_structure",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      }
+    ],
+    "summary": {
+      "total_validators": 9,
+      "passed_validators": 9,
+      "total_errors": 0,
+      "total_warnings": 0,
+      "block_count": 3,
+      "block_types": {
+        "starter": 1,
+        "agent": 1,
+        "output": 1
+      },
+      "edge_count": 2,
+      "has_variables": true,
+      "has_metadata": true
+    },
+    "validated_at": "2025-08-04T22:58:37.644558Z"
+  },
+  "status": "success"
+}

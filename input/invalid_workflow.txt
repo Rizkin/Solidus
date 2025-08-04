@@ -1,0 +1,16 @@
+@WORKFLOW
+# Missing required fields
+name: Invalid Test
+
+@BLOCKS
+# Invalid block type
+block-1 | invalid_type | Bad Block | 100 | 100 | {}
+
+# Missing position
+block-2 | agent | No Position | | | {"model": "gpt-4"}
+
+@CONNECTIONS
+# Invalid connection
+block-1 -> non-existent-block
+
+@END 

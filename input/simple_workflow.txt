@@ -1,0 +1,15 @@
+@WORKFLOW
+id: simple-test-001
+name: Simple Test Workflow
+description: Basic workflow for testing
+
+@BLOCKS
+start-1 | starter | Start | 100 | 100 | {"startType": "manual"}
+process-1 | agent | Process | 300 | 100 | {"model": "gpt-3.5-turbo"}
+end-1 | output | Output | 500 | 100 | {"type": "log"}
+
+@CONNECTIONS
+start-1 -> process-1
+process-1 -> end-1
+
+@END 

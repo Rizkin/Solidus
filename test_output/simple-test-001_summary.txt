@@ -1,0 +1,19 @@
+WORKFLOW PROCESSING RESULTS
+==================================================
+Workflow: Simple Test Workflow
+ID: simple-test-001
+Processed: 2025-08-04T22:58:37.642940
+Status: success
+
+INPUT SUMMARY:
+  Blocks: 3
+  Connections: 2
+
+GENERATED STATE:
+  Blocks: 3
+  Edges: 2
+  Pattern: basic
+
+VALIDATION:
+  Overall: ✅ PASSED
+  Checks Passed: 9/9

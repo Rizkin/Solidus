@@ -1,0 +1,40 @@
+@WORKFLOW
+id: trading-bot-advanced
+name: Advanced Crypto Trading Bot
+description: Multi-exchange arbitrage trading bot
+user_id: trader-001
+workspace_id: crypto-workspace
+color: #FF5733
+
+@BLOCKS
+# Triggers
+schedule-1 | starter | 1-Min Schedule | 50 | 200 | {"scheduleType": "minutes", "interval": "1"}
+
+# Data Sources
+binance-api | api | Binance Price | 200 | 100 | {"url": "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"}
+coinbase-api | api | Coinbase Price | 200 | 200 | {"url": "https://api.coinbase.com/v2/prices/BTC-USD/spot"}
+kraken-api | api | Kraken Price | 200 | 300 | {"url": "https://api.kraken.com/0/public/Ticker?pair=XBTUSD"}
+
+# Analysis
+arbitrage-agent | agent | Arbitrage Analyzer | 400 | 200 | {"model": "gpt-4", "prompt": "Analyze price differences and find arbitrage opportunities", "temperature": 0.2}
+risk-agent | agent | Risk Manager | 600 | 200 | {"model": "gpt-4", "prompt": "Assess risk levels and position sizing", "temperature": 0.1}
+
+# Execution
+trade-executor | output | Execute Trades | 800 | 200 | {"type": "webhook", "url": "https://trading-api.internal/execute", "auth": "bearer"}
+
+@CONNECTIONS
+# Trigger to APIs
+schedule-1 -> binance-api
+schedule-1 -> coinbase-api
+schedule-1 -> kraken-api
+
+# APIs to Analyzer
+binance-api -> arbitrage-agent
+coinbase-api -> arbitrage-agent
+kraken-api -> arbitrage-agent
+
+# Analysis chain
+arbitrage-agent -> risk-agent
+risk-agent -> trade-executor
+
+@END 

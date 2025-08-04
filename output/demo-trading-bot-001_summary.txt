@@ -1,0 +1,19 @@
+WORKFLOW PROCESSING RESULTS
+==================================================
+Workflow: Crypto Trading Bot
+ID: demo-trading-bot-001
+Processed: 2025-08-04T22:58:52.146945
+Status: success
+
+INPUT SUMMARY:
+  Blocks: 4
+  Connections: 3
+
+GENERATED STATE:
+  Blocks: 3
+  Edges: 2
+  Pattern: basic
+
+VALIDATION:
+  Overall: ✅ PASSED
+  Checks Passed: 9/9

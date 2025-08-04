@@ -1,0 +1,26 @@
+# WORKFLOW DEFINITION FILE
+# Format: Each section starts with @ followed by section name
+# Comments start with #
+
+@WORKFLOW
+id: demo-trading-bot-001
+name: Crypto Trading Bot
+description: Automated BTC/USD trading with AI decisions
+user_id: demo-user
+workspace_id: demo-workspace
+color: #FF6B6B
+
+@BLOCKS
+# Format: id | type | name | x | y | config_json
+starter-001 | starter | Price Monitor | 100 | 200 | {"scheduleType": "minutes", "interval": "5"}
+api-001 | api | Fetch BTC Price | 300 | 200 | {"url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin", "method": "GET"}
+agent-001 | agent | Trading AI | 500 | 200 | {"model": "gpt-4", "prompt": "Analyze BTC price and decide: BUY/SELL/HOLD", "temperature": 0.3}
+output-001 | output | Execute Trade | 700 | 200 | {"type": "webhook", "url": "https://api.trading.com/execute"}
+
+@CONNECTIONS
+# Format: source_id -> target_id
+starter-001 -> api-001
+api-001 -> agent-001
+agent-001 -> output-001
+
+@END 

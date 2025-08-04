@@ -1,0 +1,217 @@
+{
+  "input_file": "input/simple_workflow.txt",
+  "workflow_id": "simple-test-001",
+  "workflow_name": "Simple Test Workflow",
+  "timestamp": "2025-08-04T22:58:37.642940",
+  "input_data": {
+    "workflow": {
+      "id": "simple-test-001",
+      "name": "Simple Test Workflow",
+      "description": "Basic workflow for testing"
+    },
+    "blocks": [
+      {
+        "id": "start-1",
+        "type": "starter",
+        "name": "Start",
+        "position_x": 100.0,
+        "position_y": 100.0,
+        "config": {
+          "startType": "manual"
+        }
+      },
+      {
+        "id": "process-1",
+        "type": "agent",
+        "name": "Process",
+        "position_x": 300.0,
+        "position_y": 100.0,
+        "config": {
+          "model": "gpt-3.5-turbo"
+        }
+      },
+      {
+        "id": "end-1",
+        "type": "output",
+        "name": "Output",
+        "position_x": 500.0,
+        "position_y": 100.0,
+        "config": {
+          "type": "log"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "source": "start-1",
+        "target": "process-1"
+      },
+      {
+        "source": "process-1",
+        "target": "end-1"
+      }
+    ]
+  },
+  "generated_state": {
+    "blocks": {
+      "starter_1": {
+        "id": "starter_1",
+        "type": "starter",
+        "name": "Start Workflow",
+        "position_x": 100,
+        "position_y": 100,
+        "sub_blocks": {
+          "startWorkflow": "manual"
+        }
+      },
+      "agent_1": {
+        "id": "agent_1",
+        "type": "agent",
+        "name": "Processing Agent",
+        "position_x": 300,
+        "position_y": 100,
+        "sub_blocks": {
+          "model": "gpt-4",
+          "systemPrompt": "Process the input and provide helpful output",
+          "temperature": 0.7
+        }
+      },
+      "output_1": {
+        "id": "output_1",
+        "type": "output",
+        "name": "Result Output",
+        "position_x": 500,
+        "position_y": 100,
+        "sub_blocks": {
+          "outputType": "webhook",
+          "url": "{{env.WEBHOOK_URL}}"
+        }
+      }
+    },
+    "edges": [
+      {
+        "from": "starter_1",
+        "to": "agent_1"
+      },
+      {
+        "from": "agent_1",
+        "to": "output_1"
+      }
+    ],
+    "subflows": {},
+    "variables": {
+      "WORKFLOW_NAME": "Basic Workflow"
+    },
+    "metadata": {
+      "version": "1.0.0",
+      "createdAt": "2025-08-04T22:58:37.642022Z",
+      "updatedAt": "2025-08-04T22:58:37.642027Z",
+      "pattern": "basic"
+    }
+  },
+  "validation_report": {
+    "workflow_id": "simple-test-001",
+    "overall_valid": true,
+    "agent_forge_compliance": true,
+    "validation_results": [
+      {
+        "validator_name": "validate_schema",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_block_types",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "total_blocks": 3,
+          "block_types": [
+            "agent",
+            "output",
+            "starter"
+          ]
+        }
+      },
+      {
+        "validator_name": "validate_starter_blocks",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "starter_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_agent_configuration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "agent_count": 1
+        }
+      },
+      {
+        "validator_name": "validate_api_integration",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "api_count": 0
+        }
+      },
+      {
+        "validator_name": "validate_edge_connectivity",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "edge_count": 2,
+          "connected_blocks": 3
+        }
+      },
+      {
+        "validator_name": "validate_workflow_patterns",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": {
+          "detected_patterns": []
+        }
+      },
+      {
+        "validator_name": "validate_position_bounds",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      },
+      {
+        "validator_name": "validate_subblock_structure",
+        "valid": true,
+        "errors": [],
+        "warnings": [],
+        "metadata": null
+      }
+    ],
+    "summary": {
+      "total_validators": 9,
+      "passed_validators": 9,
+      "total_errors": 0,
+      "total_warnings": 0,
+      "block_count": 3,
+      "block_types": {
+        "starter": 1,
+        "agent": 1,
+        "output": 1
+      },
+      "edge_count": 2,
+      "has_variables": true,
+      "has_metadata": true
+    },
+    "validated_at": "2025-08-04T22:58:37.642776Z"
+  },
+  "status": "success"
+}
