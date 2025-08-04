@@ -10,30 +10,16 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/frontend/(.*\\.(css|js|html|ico|png|jpg|svg|webp))",
-      "dest": "/frontend/$1",
-      "headers": {
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/frontend/?$",
+      "src": "/frontend$",
       "dest": "/frontend/index.html"
     },
     {
-      "src": "/frontend/",
+      "src": "/frontend/$",
       "dest": "/frontend/index.html"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1",
-      "headers": {
-        "Cache-Control": "public, max-age=3600"
-      }
     },
     {
       "src": "^/$",
-      "dest": "/public/index.html"
+      "dest": "/index.html"
     },
     {
       "src": "/(.*)",
