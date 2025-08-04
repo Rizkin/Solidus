@@ -1020,7 +1020,7 @@ class TemplateService:
 template_service = TemplateService()
 
 # Module-level functions for API compatibility
-# Fixed: Template import functions for Vercel deployment
+# Updated: Now with 13 professional templates (force deployment)
 def get_all_templates() -> Dict[str, Dict[str, Any]]:
     """Get all available templates - module-level function for API compatibility"""
     return template_service.get_all_templates()
