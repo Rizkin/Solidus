@@ -405,7 +405,7 @@ class TemplateService:
             ],
             "variables": {
                 "ESCALATION_THRESHOLD": "high",
-                "AUTO_RESPONSE_ENABLED": true,
+                "AUTO_RESPONSE_ENABLED": True,
                 "BUSINESS_HOURS": "9-17"
             }
         }
