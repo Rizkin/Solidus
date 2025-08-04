@@ -276,12 +276,15 @@ class StateGenerator:
     
     async def _generate_ai_state(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> Dict[str, Any]:
         """Generate state using Claude AI (original method)"""
+        start_time = time.time()
+        model_name = "claude-3-sonnet-20240229"
+        
         try:
             # Create prompt for Claude
             prompt = self._create_ai_prompt(workflow_id, workflow_data)
             
             response = await self.client.messages.create(
-                model="claude-3-sonnet-20240229",
+                model=model_name,
                 max_tokens=4000,
                 temperature=0.7,
                 messages=[{
@@ -290,8 +293,27 @@ class StateGenerator:
                 }]
             )
             
+            response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+            
             # Parse AI response
             ai_response = response.content[0].text
+            
+            # Estimate cost (Claude 3 Sonnet: ~$3 per 1M input tokens, ~$15 per 1M output tokens)
+            input_tokens = len(prompt.split()) * 1.3  # Rough estimation
+            output_tokens = len(ai_response.split()) * 1.3
+            cost_estimate = (input_tokens / 1000000 * 3) + (output_tokens / 1000000 * 15)
+            
+            # Log AI usage
+            await self.lookup_service.log_ai_usage(
+                provider="anthropic",
+                model=model_name,
+                operation_type="generation",
+                workflow_id=workflow_id,
+                token_count=int(input_tokens + output_tokens),
+                cost_estimate=cost_estimate,
+                response_time=response_time,
+                status="success"
+            )
             
             # Extract JSON from response
             try:
@@ -315,6 +337,19 @@ class StateGenerator:
             return enhanced_state
             
         except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            
+            # Log failed AI usage
+            await self.lookup_service.log_ai_usage(
+                provider="anthropic",
+                model=model_name,
+                operation_type="generation",
+                workflow_id=workflow_id,
+                response_time=response_time,
+                status="error",
+                error_message=str(e)
+            )
+            
             logger.error(f"AI state generation failed: {e}")
             return await self._generate_fallback_state(workflow_id, workflow_data)
     
@@ -356,19 +391,52 @@ Return only valid JSON.
     
     async def _generate_fallback_state(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> Dict[str, Any]:
         """Generate state using rule-based fallback"""
+        start_time = time.time()
         
-        # Determine workflow pattern
-        pattern = await self.analyze_workflow_pattern(workflow_id, workflow_data)
-        
-        if pattern == "trading_bot":
-            return self._create_trading_bot_state()
-        elif pattern == "lead_generation":
-            return self._create_lead_gen_state()
-        elif pattern == "multi_agent":
-            return self._create_multi_agent_state()
-        elif pattern == "web3_automation":
-            return self._create_web3_state()
-        else:
+        try:
+            # Determine workflow pattern
+            pattern = await self.analyze_workflow_pattern(workflow_id, workflow_data)
+            
+            if pattern == "trading_bot":
+                result = self._create_trading_bot_state()
+            elif pattern == "lead_generation":
+                result = self._create_lead_gen_state()
+            elif pattern == "multi_agent":
+                result = self._create_multi_agent_state()
+            elif pattern == "web3_automation":
+                result = self._create_web3_state()
+            else:
+                result = self._create_basic_state()
+            
+            response_time = (time.time() - start_time) * 1000
+            
+            # Log fallback usage
+            await self.lookup_service.log_ai_usage(
+                provider="fallback",
+                model="rule-based-generator",
+                operation_type="generation",
+                workflow_id=workflow_id,
+                response_time=response_time,
+                status="success"
+            )
+            
+            return result
+            
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            
+            # Log failed fallback usage
+            await self.lookup_service.log_ai_usage(
+                provider="fallback",
+                model="rule-based-generator",
+                operation_type="generation",
+                workflow_id=workflow_id,
+                response_time=response_time,
+                status="error",
+                error_message=str(e)
+            )
+            
+            # Return basic state as last resort
             return self._create_basic_state()
     
     def _create_trading_bot_state(self) -> Dict[str, Any]:

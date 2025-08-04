@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import logging
 import asyncio
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,70 @@ class EnhancedLookupService:
                 logger.warning("❌ OpenAI library not installed, embeddings disabled")
         else:
             logger.info("🔄 OpenAI embeddings disabled (no API key)")
+
+    async def log_ai_usage(self, provider: str, model: str, operation_type: str, 
+                          workflow_id: Optional[str] = None, token_count: Optional[int] = None, 
+                          cost_estimate: Optional[float] = None, response_time: Optional[float] = None, 
+                          status: str = "success", error_message: Optional[str] = None):
+        """Log AI usage to the ai_usage_logs table"""
+        try:
+            if self.db_service.use_database:
+                log_data = {
+                    "provider": provider,
+                    "model": model,
+                    "operation_type": operation_type,
+                    "workflow_id": workflow_id,
+                    "token_count": token_count,
+                    "cost_estimate": cost_estimate,
+                    "response_time": response_time,
+                    "status": status,
+                    "error_message": error_message,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                
+                result = self.db_service.client.table('ai_usage_logs').insert(log_data).execute()
+                logger.debug(f"AI usage logged: {provider}/{model} - {operation_type}")
+        except Exception as e:
+            logger.error(f"Failed to log AI usage: {e}")
+
+    async def log_cache_stats(self, cache_type: str, hit: bool):
+        """Log cache hit/miss to the cache_stats table"""
+        try:
+            if self.db_service.use_database:
+                # Try to find existing stats for today
+                today = datetime.utcnow().date().isoformat()
+                
+                # Check if we have stats for today
+                existing = self.db_service.client.table('cache_stats').select(
+                    'id', 'hit_count', 'miss_count'
+                ).eq('cache_type', cache_type).eq('period_start', today).execute()
+                
+                if existing.data:
+                    # Update existing record
+                    record = existing.data[0]
+                    if hit:
+                        new_hit_count = record['hit_count'] + 1
+                        new_miss_count = record['miss_count']
+                    else:
+                        new_hit_count = record['hit_count']
+                        new_miss_count = record['miss_count'] + 1
+                    
+                    self.db_service.client.table('cache_stats').update({
+                        'hit_count': new_hit_count,
+                        'miss_count': new_miss_count
+                    }).eq('id', record['id']).execute()
+                else:
+                    # Create new record
+                    self.db_service.client.table('cache_stats').insert({
+                        'cache_type': cache_type,
+                        'hit_count': 1 if hit else 0,
+                        'miss_count': 0 if hit else 1,
+                        'period_start': today
+                    }).execute()
+                    
+                logger.debug(f"Cache stats logged: {cache_type} - {'HIT' if hit else 'MISS'}")
+        except Exception as e:
+            logger.error(f"Failed to log cache stats: {e}")
     
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
         """Generate embedding for workflow description"""
@@ -35,15 +100,42 @@ class EnhancedLookupService:
             logger.warning("OpenAI client not initialized - no API key")
             return None
             
+        start_time = time.time()
         try:
             logger.info(f"Generating embedding for text: {text[:50]}...")
             response = await self.openai_client.embeddings.create(
                 model=self.embedding_model,
                 input=text
             )
+            response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+            
+            # Estimate cost (OpenAI text-embedding-3-small: $0.00002 per 1K tokens)
+            token_count = len(text.split()) * 1.3  # Rough token estimation
+            cost_estimate = (token_count / 1000) * 0.00002
+            
+            # Log AI usage
+            await self.log_ai_usage(
+                provider="openai",
+                model=self.embedding_model,
+                operation_type="embedding",
+                token_count=int(token_count),
+                cost_estimate=cost_estimate,
+                response_time=response_time,
+                status="success"
+            )
+            
             logger.info("✅ Embedding generated successfully")
             return response.data[0].embedding
         except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            await self.log_ai_usage(
+                provider="openai",
+                model=self.embedding_model,
+                operation_type="embedding",
+                response_time=response_time,
+                status="error",
+                error_message=str(e)
+            )
             logger.error(f"❌ Error generating embedding: {e}")
             logger.error(f"Error type: {type(e).__name__}")
             return None
@@ -189,13 +281,15 @@ class EnhancedLookupService:
         self, 
         workflow_data: Dict[str, Any]
     ) -> Optional[Tuple[Dict[str, Any], float, str]]:
-        """Hybrid search: structural + semantic"""
+        """Hybrid search: structural + semantic with cache statistics"""
         
         # 1. Try structural match first (fast)
         structural_match = await self.find_similar_workflows_structural(workflow_data)
         
         if structural_match and structural_match[1] >= 0.9:
             # High confidence structural match
+            await self.log_cache_stats("structural_match", hit=True)
+            logger.info(f"✅ Structural cache hit: {structural_match[1]:.1%} similarity")
             return (*structural_match, "structural")
         
         # 2. Try semantic search if available
@@ -203,14 +297,23 @@ class EnhancedLookupService:
         
         if semantic_match and semantic_match[1] >= 0.85:
             # High confidence semantic match
+            await self.log_cache_stats("semantic_match", hit=True)
+            logger.info(f"✅ Semantic cache hit: {semantic_match[1]:.1%} similarity")
             return (*semantic_match, "semantic")
         
         # 3. Return best available match
         if structural_match:
+            await self.log_cache_stats("structural_match", hit=True)
+            logger.info(f"✅ Lower confidence structural hit: {structural_match[1]:.1%}")
             return (*structural_match, "structural")
         elif semantic_match:
+            await self.log_cache_stats("semantic_match", hit=True)
+            logger.info(f"✅ Lower confidence semantic hit: {semantic_match[1]:.1%}")
             return (*semantic_match, "semantic")
         
+        # Cache miss - log it
+        await self.log_cache_stats("overall", hit=False)
+        logger.info("❌ Cache miss - no similar workflow found")
         return None
     
     async def _mock_similarity_search(self, workflow_data: Dict[str, Any]) -> Optional[Tuple[Dict[str, Any], float]]:
@@ -420,36 +523,63 @@ class EnhancedLookupService:
         return adapted_state
     
     async def get_cache_statistics(self) -> Dict[str, Any]:
-        """Get cache performance statistics"""
+        """Get cache performance statistics from cache_stats table"""
         try:
             if self.db_service.use_database:
-                # Get database stats
-                stats = self.db_service.client.table('workflow_lookup').select(
-                    'workflow_type',
-                    'usage_count',
-                    'avg_generation_time'
-                ).execute()
+                # Get cache statistics from the database
+                stats_query = self.db_service.client.table('cache_stats').select(
+                    'cache_type', 'hit_count', 'miss_count', 'hit_rate', 'period_start'
+                ).order('period_start', desc=True).limit(30).execute()  # Last 30 days
                 
-                if stats.data:
-                    total_patterns = len(stats.data)
-                    total_uses = sum(item['usage_count'] for item in stats.data)
-                    avg_time_saved = sum(item['avg_generation_time'] for item in stats.data) / total_patterns if total_patterns > 0 else 0
+                if stats_query.data:
+                    # Calculate overall stats
+                    total_hits = sum(row['hit_count'] for row in stats_query.data)
+                    total_misses = sum(row['miss_count'] for row in stats_query.data)
+                    total_requests = total_hits + total_misses
+                    overall_hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+                    
+                    # Get AI usage stats
+                    ai_stats = self.db_service.client.table('ai_usage_logs').select(
+                        'provider', 'operation_type', 'cost_estimate', 'response_time'
+                    ).execute()
+                    
+                    total_ai_cost = sum(float(row.get('cost_estimate', 0) or 0) for row in ai_stats.data) if ai_stats.data else 0
+                    ai_calls_made = len(ai_stats.data) if ai_stats.data else 0
+                    
+                    # Estimate savings (assuming 70% cache hit rate saves costs)
+                    estimated_saved_calls = int(total_hits * 0.7) if total_hits > 0 else 0
+                    estimated_saved_cost = estimated_saved_calls * 0.01  # Rough estimate
                     
                     return {
-                        "total_patterns_cached": total_patterns,
-                        "total_cache_hits": total_uses,
-                        "average_time_saved": f"{avg_time_saved:.2f}s",
-                        "cache_hit_rate": f"{(total_uses / (total_uses + total_patterns)) * 100:.1f}%" if total_uses > 0 else "0%",
-                        "ai_calls_saved": max(0, total_uses - total_patterns)
+                        "total_requests": total_requests,
+                        "cache_hits": total_hits,
+                        "cache_misses": total_misses,
+                        "hit_rate": f"{overall_hit_rate:.1f}%",
+                        "ai_calls_made": ai_calls_made,
+                        "ai_calls_saved": estimated_saved_calls,
+                        "total_ai_cost": f"${total_ai_cost:.4f}",
+                        "estimated_cost_saved": f"${estimated_saved_cost:.4f}",
+                        "cache_breakdown": {
+                            row['cache_type']: {
+                                'hits': row['hit_count'],
+                                'misses': row['miss_count'],
+                                'hit_rate': f"{row['hit_rate']:.1f}%" if row['hit_rate'] else "0%"
+                            }
+                            for row in stats_query.data
+                        },
+                        "status": "database_connected"
                     }
             
-            # Mock stats
+            # Mock stats fallback
             return {
-                "total_patterns_cached": 5,
-                "total_cache_hits": 12,
-                "average_time_saved": "1.8s",
-                "cache_hit_rate": "70.6%",
-                "ai_calls_saved": 7,
+                "total_requests": 17,
+                "cache_hits": 12,
+                "cache_misses": 5,
+                "hit_rate": "70.6%",
+                "ai_calls_made": 5,
+                "ai_calls_saved": 12,
+                "total_ai_cost": "$0.0045",
+                "estimated_cost_saved": "$0.0120",
                 "status": "mock_data"
             }
             
