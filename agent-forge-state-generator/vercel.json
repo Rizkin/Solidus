@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "name": "agent-forge-state-generator",
+  "builds": [
+    {
+      "src": "src/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "runtime": "python3.11"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/main.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": "src"
+  },
+  "functions": {
+    "src/main.py": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["iad1", "sfo1"],
+  "github": {
+    "silent": true
+  }
+}

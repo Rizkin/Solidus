@@ -1,0 +1,138 @@
+# Production Docker Compose for Agent Forge State Generator with Supabase
+version: '3.8'
+
+services:
+  agent-forge-generator:
+    image: ${DOCKER_REGISTRY:-ghcr.io/agent-forge}/agent-forge-generator:${VERSION:-latest}
+    container_name: agent-forge-generator-prod
+    environment:
+      # Supabase Production Configuration
+      - DATABASE_URL=${SUPABASE_DATABASE_URL}
+      - DIRECT_DATABASE_URL=${SUPABASE_DIRECT_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      
+      # AI Configuration
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      
+      # Agent Forge Production Settings
+      - AGENT_FORGE_MODE=production
+      - LOG_LEVEL=WARNING
+      - API_PORT=8000
+      
+      # Security
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    
+    ports:
+      - "8000:8000"
+    
+    # Production deployment configuration
+    deploy:
+      mode: replicated
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 60s
+        max_failure_ratio: 0.3
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: pause
+        monitor: 60s
+        max_failure_ratio: 0.3
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Production security
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    networks:
+      - agent-forge-prod-network
+
+  # Production monitoring (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agent-forge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - agent-forge-prod-network
+    restart: unless-stopped
+
+  # Production metrics collection
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agent-forge-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - agent-forge-prod-network
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  agent-forge-prod-network:
+    driver: overlay
+    name: agent-forge-prod-network
+    attachable: true
+
+# Production secrets (use Docker Swarm secrets in real deployment)
+secrets:
+  anthropic_api_key:
+    external: true
+  supabase_service_key:
+    external: true

@@ -1,0 +1,93 @@
+# Docker Compose for Agent Forge State Generator Development
+version: '3.8'
+
+services:
+  agent-forge-generator:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-forge-state-generator
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:agentforge@db:5432/agentforge
+      - DIRECT_DATABASE_URL=postgresql://postgres:agentforge@db:5432/agentforge
+      - SUPABASE_URL=http://db:5432  # For development, use local DB
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-your_claude_api_key_here}
+      - AGENT_FORGE_MODE=development
+      - LOG_LEVEL=INFO
+      - API_PORT=8000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src  # Hot reload for development
+      - ./tests:/app/tests
+      - ./data:/app/data
+    networks:
+      - agent-forge-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: agent-forge-db
+    environment:
+      POSTGRES_DB: agentforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: agentforge
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/create_tables.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./data/agent_forge_synthetic_data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agentforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - agent-forge-network
+    restart: unless-stopped
+
+  # Optional: Redis for caching (Agent Forge optimization)
+  redis:
+    image: redis:7-alpine
+    container_name: agent-forge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - agent-forge-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # Optional: Nginx reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    container_name: agent-forge-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - agent-forge-generator
+    networks:
+      - agent-forge-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  agent-forge-network:
+    driver: bridge
+    name: agent-forge-network

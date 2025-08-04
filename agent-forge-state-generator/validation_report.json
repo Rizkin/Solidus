@@ -1,0 +1,145 @@
+{
+  "summary": {
+    "total_tests": 19,
+    "passed_tests": 15,
+    "failed_tests": 4,
+    "success_rate": 78.94736842105263,
+    "total_time_seconds": 14.945314168930054,
+    "timestamp": "2025-08-04T14:06:28.523681"
+  },
+  "results": [
+    {
+      "test": "System Health Check",
+      "success": true,
+      "details": "Status: degraded",
+      "response_time_ms": 3679.18,
+      "timestamp": "2025-08-04T14:06:17.272761"
+    },
+    {
+      "test": "Component: database",
+      "success": false,
+      "details": "Status: error: Tenant or user not found",
+      "response_time_ms": 0,
+      "timestamp": "2025-08-04T14:06:17.272834"
+    },
+    {
+      "test": "Component: supabase_client",
+      "success": true,
+      "details": "Status: connected",
+      "response_time_ms": 0,
+      "timestamp": "2025-08-04T14:06:17.272853"
+    },
+    {
+      "test": "Component: workflow_count",
+      "success": false,
+      "details": "Status: 1",
+      "response_time_ms": 0,
+      "timestamp": "2025-08-04T14:06:17.272865"
+    },
+    {
+      "test": "Component: claude_api",
+      "success": true,
+      "details": "Status: configured",
+      "response_time_ms": 0,
+      "timestamp": "2025-08-04T14:06:17.272878"
+    },
+    {
+      "test": "API: Root endpoint",
+      "success": true,
+      "details": "",
+      "response_time_ms": 7.77,
+      "timestamp": "2025-08-04T14:06:17.280675"
+    },
+    {
+      "test": "API: Health check",
+      "success": true,
+      "details": "",
+      "response_time_ms": 2916.93,
+      "timestamp": "2025-08-04T14:06:20.197668"
+    },
+    {
+      "test": "API: Block types documentation",
+      "success": true,
+      "details": "",
+      "response_time_ms": 7.27,
+      "timestamp": "2025-08-04T14:06:20.205017"
+    },
+    {
+      "test": "API: API documentation",
+      "success": true,
+      "details": "",
+      "response_time_ms": 5.09,
+      "timestamp": "2025-08-04T14:06:20.210151"
+    },
+    {
+      "test": "API: OpenAPI specification",
+      "success": true,
+      "details": "",
+      "response_time_ms": 11.5,
+      "timestamp": "2025-08-04T14:06:20.221689"
+    },
+    {
+      "test": "Workflow State Retrieval",
+      "success": true,
+      "details": "Retrieved workflow: workflow-test",
+      "response_time_ms": 368.16,
+      "timestamp": "2025-08-04T14:06:20.589937"
+    },
+    {
+      "test": "Workflow Validation",
+      "success": true,
+      "details": "Validation result: Valid",
+      "response_time_ms": 307.57,
+      "timestamp": "2025-08-04T14:06:20.897572"
+    },
+    {
+      "test": "AI State Generation",
+      "success": true,
+      "details": "Generated state: Success",
+      "response_time_ms": 2681.0,
+      "timestamp": "2025-08-04T14:06:23.578708"
+    },
+    {
+      "test": "Marketplace Preview",
+      "success": true,
+      "details": "Endpoint not implemented (acceptable)",
+      "response_time_ms": 3.99,
+      "timestamp": "2025-08-04T14:06:23.582734"
+    },
+    {
+      "test": "Block Types Documentation",
+      "success": true,
+      "details": "Block types available: ['starter', 'agent', 'api', 'output', 'tool']",
+      "response_time_ms": 4.25,
+      "timestamp": "2025-08-04T14:06:23.587074"
+    },
+    {
+      "test": "Performance: Health Check",
+      "success": false,
+      "details": "Target: <1.0s, Actual: 2.29s",
+      "response_time_ms": 2292.53,
+      "timestamp": "2025-08-04T14:06:25.879654"
+    },
+    {
+      "test": "Performance: Block Types",
+      "success": true,
+      "details": "Target: <2.0s, Actual: 0.00s",
+      "response_time_ms": 4.02,
+      "timestamp": "2025-08-04T14:06:25.883730"
+    },
+    {
+      "test": "Performance: Workflow State",
+      "success": true,
+      "details": "Target: <3.0s, Actual: 0.33s",
+      "response_time_ms": 335.0,
+      "timestamp": "2025-08-04T14:06:26.218758"
+    },
+    {
+      "test": "Database Data Availability",
+      "success": false,
+      "details": "Workflows in database: 0",
+      "response_time_ms": 2304.76,
+      "timestamp": "2025-08-04T14:06:28.523580"
+    }
+  ]
+}
