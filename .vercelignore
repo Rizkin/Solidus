@@ -1,4 +1,4 @@
-# Test files and coverage reports
+# Aggressively exclude all non-production files
 tests/
 .pytest_cache/
 .benchmarks/
@@ -9,13 +9,15 @@ improved_test_report.json
 validation_report.json
 test_templates.py
 test.md
+pytest.ini
+conftest.py
 
-# Documentation
+# Documentation and markdown
 docs/
 *.md
-!README.md
+README.md
 
-# Docker and deployment files
+# Docker and deployment infrastructure
 docker/
 deploy/
 Dockerfile
@@ -24,16 +26,14 @@ nginx.conf
 deploy.sh
 Makefile
 
-# Monitoring and config files
+# Monitoring, config, and data files
 monitoring/
 prometheus.yml
 vercel.json.backup
-
-# Data files and CSVs
 solidus_docs/
 data/
 
-# Cache and temp files
+# All cache and temp files
 .DS_Store
 __pycache__/
 *.pyc
@@ -45,20 +45,13 @@ __pycache__/
 .venv/
 venv/
 env/
-
-# Development dependencies
-requirements-vercel.txt
-pytest.ini
-
-# Keep frontend and public directories for serving static files
-# public/
-# frontend/
-
-# Git and IDE files
 .git/
 .gitignore
 .vscode/
 .idea/
+~/
 
-# Vercel-specific exclusions
-~/ 
+# Development files
+requirements-vercel.txt
+
+# Only include: src/, api/, frontend/, public/, requirements.txt, vercel.json 
