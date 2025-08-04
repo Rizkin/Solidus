@@ -231,3 +231,43 @@ BEGIN
     LIMIT match_count;
 END;
 $$ LANGUAGE plpgsql; 
+
+-- Create cache statistics table
+CREATE TABLE public.cache_stats (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    cache_type TEXT NOT NULL, -- 'template', 'pattern', 'semantic', etc.
+    hit_count INTEGER DEFAULT 0,
+    miss_count INTEGER DEFAULT 0,
+    hit_rate FLOAT GENERATED ALWAYS AS (
+        CASE WHEN (hit_count + miss_count) > 0 
+        THEN hit_count::FLOAT / (hit_count + miss_count) 
+        ELSE 0 END
+    ) STORED,
+    period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    period_end TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create AI usage logs table
+CREATE TABLE public.ai_usage_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    provider TEXT NOT NULL, -- 'anthropic', 'openai', 'fallback'
+    model TEXT NOT NULL, -- 'claude-3-5-sonnet', 'text-embedding-3-small', etc.
+    operation_type TEXT NOT NULL, -- 'generation', 'embedding', 'validation'
+    workflow_id TEXT REFERENCES workflow(id),
+    token_count INTEGER,
+    cost_estimate FLOAT,
+    response_time FLOAT, -- in milliseconds
+    status TEXT NOT NULL, -- 'success', 'error', 'timeout'
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_cache_stats_type ON cache_stats(cache_type);
+CREATE INDEX IF NOT EXISTS idx_cache_stats_period ON cache_stats(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_provider ON ai_usage_logs(provider);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_model ON ai_usage_logs(model);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_date ON ai_usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_workflow ON ai_usage_logs(workflow_id); 
