@@ -1,15 +1,52 @@
-# Vercel-optimized requirements for Agent Forge State Generator
-# Fixed dependency conflicts for successful deployment
+# Agent Forge State Generator - Full Dependencies
+# Optimized for Vercel deployment with all features
 
+# Core FastAPI Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+
+# Data Validation & Serialization
 pydantic==2.5.0
+
+# HTTP Client & Networking
 httpx==0.24.1
+
+# Database & Storage
 supabase==2.0.2
-anthropic==0.8.1
-python-multipart==0.0.6
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
 sqlalchemy[asyncio]==2.0.23
 asyncpg==0.29.0
+
+# AI Integration
+anthropic==0.8.1
+
+# File Upload & Form Handling
+python-multipart==0.0.6
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Environment & Configuration
 python-dotenv==1.0.0
+
+# Data Processing & Serialization
+pyyaml==6.0.1
+
+# Date & Time Utilities
+python-dateutil==2.8.2
+
+# Async Support
+aiofiles==23.2.1
+
+# Logging & Monitoring
+structlog==23.2.0
+
+# Optional: Testing Dependencies (for development)
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# pytest-cov==4.1.0
+
+# Optional: Development Tools (for local development)
+# black==23.11.0
+# isort==5.12.0
+# mypy==1.7.1
