@@ -1,0 +1,6 @@
+{
+  "tests/integration/test_full_workflow.py::TestAgentForgeIntegration::test_full_workflow_generation_flow": true,
+  "tests/integration/test_full_workflow.py::TestAgentForgeIntegration::test_error_handling_integration": true,
+  "tests/test_agent_forge_generation.py::TestAgentForgeGeneration::test_web3_automation_generation": true,
+  "tests/test_validation.py::TestAgentForgeValidation::test_validate_position_bounds": true
+}
