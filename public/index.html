@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Forge - Redirecting...</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            padding: 2rem;
+        }
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+            font-size: 2rem;
+            margin: 1rem 0;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .links {
+            margin-top: 2rem;
+        }
+        .link {
+            display: inline-block;
+            margin: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🤖</div>
+        <h1>Agent Forge</h1>
+        <p>AI-Powered Workflow Automation Platform</p>
+        <div class="spinner">⚡</div>
+        <p>Redirecting to application...</p>
+        
+        <div class="links">
+            <a href="/frontend/" class="link">🎨 Frontend Interface</a>
+            <a href="/api/docs" class="link">📚 API Documentation</a>
+            <a href="/api/" class="link">🔧 API Status</a>
+        </div>
+    </div>
+
+    <script>
+        // Auto-redirect to frontend after 2 seconds
+        setTimeout(() => {
+            window.location.href = '/frontend/';
+        }, 2000);
+    </script>
+</body>
+</html> 
