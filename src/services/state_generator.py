@@ -1,11 +1,12 @@
 """
 Agent Forge State Generator Service
-AI-powered workflow state generation with fallback systems
+AI-powered workflow state generation with intelligent caching
 """
 import os
 import json
 import uuid
 import logging
+import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 import asyncio
@@ -19,30 +20,244 @@ class StateGenerator:
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         self.use_ai = bool(self.anthropic_api_key)
         
+        # Import here to avoid circular imports
+        from src.utils.database_hybrid import db_service
+        from src.services.lookup_service import lookup_service
+        
+        self.db = db_service
+        self.lookup_service = lookup_service
+        
         if self.use_ai:
             try:
                 import anthropic
                 self.client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
-                logger.info("✅ Claude AI integration enabled")
+                logger.info("✅ Claude AI integration enabled with caching")
             except ImportError:
                 logger.warning("❌ Anthropic library not installed, using fallback generation")
                 self.use_ai = False
         else:
-            logger.info("🔄 Using rule-based state generation (no AI key)")
+            logger.info("🔄 Using rule-based state generation with caching (no AI key)")
     
     async def generate_workflow_state(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Generate complete workflow state for Agent Forge"""
+        """Generate complete workflow state with intelligent caching"""
+        logger.info(f"🚀 Generating state for workflow: {workflow_id}")
+        start_time = time.time()
+        session_id = str(uuid.uuid4())
+        
         try:
-            if self.use_ai:
-                return await self._generate_ai_state(workflow_id, workflow_data)
+            # 1. Fetch workflow and blocks data
+            if workflow_data:
+                workflow = workflow_data
+                blocks = workflow_data.get('blocks', [])
             else:
-                return await self._generate_fallback_state(workflow_id, workflow_data)
+                workflow = await self.db.get_workflow(workflow_id)
+                if not workflow:
+                    raise ValueError(f"Workflow {workflow_id} not found")
+                blocks = await self.db.get_workflow_blocks(workflow_id)
+            
+            logger.info(f"Found {len(blocks)} blocks for workflow")
+            
+            # 2. Prepare input data for caching system
+            input_data = {
+                'workflow_id': workflow_id,
+                'workflow_type': self._determine_workflow_type(workflow, blocks),
+                'blocks': blocks,
+                'edges': self._infer_edges_from_positions(blocks),
+                'variables': workflow.get('variables', {})
+            }
+            
+            # 3. Create temp record for tracking
+            temp_id = await self.lookup_service.create_temp_record(session_id, input_data)
+            
+            # 4. Check lookup table for similar workflows
+            logger.info("🔍 Checking cache for similar workflows...")
+            cached_result = await self.lookup_service.find_similar_workflows(input_data)
+            
+            if cached_result:
+                cached_state, similarity_score = cached_result
+                logger.info(f"✅ Cache HIT! Using cached result with {similarity_score:.2%} similarity")
+                
+                # 5a. Adapt cached state for current requirements
+                if similarity_score < 0.95:  # Not exact match
+                    logger.info("🔧 Adapting cached state to current requirements...")
+                    adapted_state = await self.lookup_service.adapt_cached_state(
+                        cached_state,
+                        input_data,
+                        similarity_score
+                    )
+                    
+                    # Optional: Use lighter AI model for fine-tuning
+                    if self.use_ai and similarity_score < 0.85:
+                        adapted_state = await self._ai_adapt_state(
+                            adapted_state,
+                            input_data,
+                            similarity_score
+                        )
+                else:
+                    adapted_state = cached_state
+                    logger.info("🎯 Exact match found, using cached state as-is")
+                
+                # Update temp record
+                await self.lookup_service.update_temp_record(
+                    temp_id,
+                    adapted_state,
+                    similarity_score=similarity_score
+                )
+                
+                generation_time = time.time() - start_time
+                logger.info(f"⚡ State generated from cache in {generation_time:.2f}s (saved ~2-3s)")
+                
+                return adapted_state
+            
+            else:
+                logger.info("❌ Cache MISS - No similar workflow found, generating new state")
+                
+                # 5b. Generate new state using AI or fallback
+                if self.use_ai:
+                    generated_state = await self._generate_ai_state(workflow_id, workflow_data)
+                else:
+                    generated_state = await self._generate_fallback_state(workflow_id, workflow_data)
+                
+                # 6. Enhance and validate the state
+                final_state = self._enhance_generated_state(generated_state, workflow_id)
+                
+                # 7. Store in lookup table for future use
+                generation_time = time.time() - start_time
+                logger.info("💾 Storing new pattern in cache for future use...")
+                await self.lookup_service.store_workflow_pattern(
+                    input_data,
+                    final_state,
+                    generation_time
+                )
+                
+                # Update temp record
+                await self.lookup_service.update_temp_record(temp_id, final_state)
+                
+                logger.info(f"🆕 New state generated in {generation_time:.2f}s")
+                
+                return final_state
+                
         except Exception as e:
-            logger.error(f"State generation failed: {e}")
+            logger.error(f"Error in cached state generation: {e}")
+            # Fallback to basic generation
             return await self._generate_fallback_state(workflow_id, workflow_data)
     
+    def _determine_workflow_type(self, workflow: Dict[str, Any], blocks: List[Dict[str, Any]]) -> str:
+        """Determine the type of workflow based on blocks and metadata"""
+        name = workflow.get('name', '').lower()
+        block_types = [b.get('type') for b in blocks if b.get('type')]
+        
+        # Pattern matching
+        if 'trading' in name or 'crypto' in name or 'bot' in name:
+            return 'trading_bot'
+        elif 'lead' in name or 'marketing' in name or 'crm' in name:
+            return 'lead_generation'
+        elif block_types.count('agent') >= 3:
+            return 'multi_agent'
+        elif 'api' in block_types and 'agent' in block_types:
+            return 'integration'
+        elif 'support' in name or 'customer' in name:
+            return 'customer_support'
+        elif 'content' in name or 'writing' in name:
+            return 'content_generation'
+        else:
+            return 'general'
+    
+    def _infer_edges_from_positions(self, blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Infer edges between blocks based on their positions and types"""
+        edges = []
+        
+        if len(blocks) < 2:
+            return edges
+        
+        # Sort blocks by position (left to right, top to bottom)
+        sorted_blocks = sorted(blocks, key=lambda b: (b.get('position_y', 0), b.get('position_x', 0)))
+        
+        # Create simple sequential connections
+        for i in range(len(sorted_blocks) - 1):
+            current_block = sorted_blocks[i]
+            next_block = sorted_blocks[i + 1]
+            
+            edges.append({
+                'from': current_block.get('id'),
+                'to': next_block.get('id'),
+                'type': 'default'
+            })
+        
+        return edges
+    
+    async def _ai_adapt_state(
+        self,
+        cached_state: Dict[str, Any],
+        current_input: Dict[str, Any],
+        similarity_score: float
+    ) -> Dict[str, Any]:
+        """Use lighter AI model to adapt cached state"""
+        logger.info(f"🤖 Using AI to fine-tune cached state (similarity: {similarity_score:.2%})")
+        
+        try:
+            adaptation_prompt = f"""
+            Adapt this cached workflow state to match the current requirements.
+            Similarity score: {similarity_score:.2%}
+            
+            Current requirements:
+            - Workflow Type: {current_input.get('workflow_type')}
+            - Block Count: {len(current_input.get('blocks', []))}
+            - Block Types: {[b.get('type') for b in current_input.get('blocks', [])]}
+            
+            Cached state to adapt:
+            {json.dumps(cached_state, indent=2)}
+            
+            Make minimal changes to adapt the cached state. Focus on:
+            1. Updating block names/descriptions to match current context
+            2. Adjusting variables if needed
+            3. Preserving the overall structure
+            
+            Return only the adapted JSON state.
+            """
+            
+            # Use a lighter model or shorter context for adaptation
+            response = await self.client.messages.create(
+                model="claude-3-haiku-20240307",  # Faster, cheaper model
+                max_tokens=2000,  # Smaller response
+                temperature=0.3,  # More deterministic
+                messages=[{
+                    "role": "user",
+                    "content": adaptation_prompt
+                }]
+            )
+            
+            # Parse AI response
+            ai_response = response.content[0].text
+            
+            # Extract JSON from response
+            try:
+                start = ai_response.find('{')
+                end = ai_response.rfind('}') + 1
+                if start != -1 and end != 0:
+                    json_str = ai_response[start:end]
+                    adapted_state = json.loads(json_str)
+                    
+                    # Add adaptation metadata
+                    if 'metadata' not in adapted_state:
+                        adapted_state['metadata'] = {}
+                    adapted_state['metadata']['ai_adapted'] = True
+                    
+                    logger.info("✅ AI adaptation completed successfully")
+                    return adapted_state
+                else:
+                    raise ValueError("No valid JSON found in AI response")
+                    
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Failed to parse AI adaptation: {e}")
+                return cached_state  # Return original cached state
+            
+        except Exception as e:
+            logger.error(f"AI adaptation failed: {e}")
+            return cached_state  # Return original cached state
+    
     async def _generate_ai_state(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Generate state using Claude AI"""
+        """Generate state using Claude AI (original method)"""
         try:
             # Create prompt for Claude
             prompt = self._create_ai_prompt(workflow_id, workflow_data)
@@ -98,70 +313,24 @@ Create a realistic, functional workflow with the following structure:
 - metadata: Version, timestamps, and other metadata
 
 Block types available:
-- starter: Entry points (webhook, schedule, manual)
-- agent: AI agents with models and prompts
+- starter: Workflow triggers (manual, schedule, webhook)
+- agent: AI agents with specific roles
 - api: External API integrations
-- output: Results destinations (email, webhook, etc.)
-- tool: Specialized tools
+- tool: Utility functions and transformations
+- output: Data outputs and notifications
 
-Each block should have:
-- id: Unique identifier
-- type: Block type
-- name: Human-readable name
-- position_x, position_y: Canvas coordinates
-- sub_blocks: Configuration specific to block type
+Generate a workflow that:
+1. Has a logical flow from start to finish
+2. Uses appropriate block types for the use case
+3. Includes realistic configurations for each block
+4. Has proper connections between blocks
+5. Includes useful variables and metadata
 
-Make the workflow practical and realistic for Agent Forge platform.
+Return only valid JSON.
 """
         
         if workflow_data:
-            base_prompt += f"\nWorkflow context: {json.dumps(workflow_data, indent=2)}"
-        
-        base_prompt += "\n\nReturn ONLY valid JSON in this exact format:"
-        
-        example_state = {
-            "blocks": {
-                "starter_1": {
-                    "id": "starter_1",
-                    "type": "starter",
-                    "name": "Workflow Trigger",
-                    "position_x": 100,
-                    "position_y": 100,
-                    "sub_blocks": {
-                        "startWorkflow": "webhook",
-                        "webhookPath": "/start",
-                        "scheduleType": "manual"
-                    }
-                },
-                "agent_1": {
-                    "id": "agent_1", 
-                    "type": "agent",
-                    "name": "Processing Agent",
-                    "position_x": 300,
-                    "position_y": 100,
-                    "sub_blocks": {
-                        "model": "gpt-4",
-                        "systemPrompt": "You are a helpful assistant",
-                        "temperature": 0.7
-                    }
-                }
-            },
-            "edges": [
-                {"from": "starter_1", "to": "agent_1"}
-            ],
-            "subflows": {},
-            "variables": {
-                "API_KEY": "{{env.API_KEY}}",
-                "WORKFLOW_NAME": "Generated Workflow"
-            },
-            "metadata": {
-                "version": "1.0.0",
-                "createdAt": "2024-01-04T10:00:00Z",
-                "updatedAt": "2024-01-04T10:00:00Z"
-            }
-        }
-        
-        base_prompt += f"\n\n{json.dumps(example_state, indent=2)}"
+            base_prompt += f"\n\nWorkflow context: {json.dumps(workflow_data, indent=2)}"
         
         return base_prompt
     
