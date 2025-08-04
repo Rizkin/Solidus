@@ -17,21 +17,57 @@ class DatabaseService:
     def __init__(self):
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
-        self.use_database = bool(self.supabase_url and self.supabase_key)
+        
+        # Log the configuration status with actual values (masked for security)
+        logger.info(f"Supabase URL configured: {'Yes' if self.supabase_url else 'No'}")
+        logger.info(f"Supabase Key configured: {'Yes' if self.supabase_key else 'No'}")
+        
+        # Log actual values for debugging (masked for security)
+        if self.supabase_url:
+            logger.info(f"Supabase URL (first 20 chars): {self.supabase_url[:20] if len(self.supabase_url) > 20 else self.supabase_url}")
+        if self.supabase_key:
+            logger.info(f"Supabase Key length: {len(self.supabase_key)}")
+        
+        # Check if both are properly configured (not None or empty)
+        self.use_database = bool(
+            self.supabase_url and self.supabase_key and 
+            self.supabase_url.strip() and self.supabase_key.strip()
+        )
         
         if self.use_database:
+            logger.info("Attempting to initialize Supabase connection...")
             try:
                 from supabase import create_client
+                # Validate that we have actual values before creating client
+                if not self.supabase_url or not self.supabase_key:
+                    raise ValueError("Supabase URL or Key is None/empty")
+                
+                # Additional validation to ensure values are not just whitespace
+                if not self.supabase_url.strip() or not self.supabase_key.strip():
+                    raise ValueError("Supabase URL or Key is empty/whitespace")
+                
+                logger.info(f"Creating Supabase client with URL: {self.supabase_url[:20]}...")
                 self.client = create_client(self.supabase_url, self.supabase_key)
                 logger.info("✅ Supabase connection established")
-            except ImportError:
-                logger.warning("❌ Supabase library not installed, using mock data")
+            except ImportError as e:
+                logger.warning(f"❌ Supabase library not installed: {e}, using mock data")
+                self.use_database = False
+            except ValueError as e:
+                logger.warning(f"❌ Supabase configuration invalid: {e}, using mock data")
                 self.use_database = False
             except Exception as e:
                 logger.warning(f"❌ Supabase connection failed: {e}, using mock data")
                 self.use_database = False
         else:
-            logger.info("🔄 Using mock database (no Supabase credentials)")
+            # Provide detailed information about why we're not using the database
+            if not self.supabase_url and not self.supabase_key:
+                logger.info("🔄 Using mock database (no Supabase credentials configured)")
+            elif not self.supabase_url:
+                logger.info("🔄 Using mock database (Supabase URL not configured)")
+            elif not self.supabase_key:
+                logger.info("🔄 Using mock database (Supabase Key not configured)")
+            else:
+                logger.info("🔄 Using mock database (Supabase credentials invalid)")
         
         # Mock data storage
         self.mock_workflows = {}
@@ -405,10 +441,18 @@ class DatabaseService:
                     "mock_workflows": len(self.mock_workflows)
                 }
         else:
+            # Provide detailed information about why we're using mock data
+            supabase_url_configured = bool(os.getenv("SUPABASE_URL"))
+            supabase_key_configured = bool(os.getenv("SUPABASE_SERVICE_KEY"))
+            
             return {
                 "status": "mock",
                 "database": "mock_data",
                 "connected": False,
+                "supabase_url_configured": supabase_url_configured,
+                "supabase_key_configured": supabase_key_configured,
+                "supabase_url": os.getenv("SUPABASE_URL", "NOT_SET"),
+                "supabase_key": "SET" if os.getenv("SUPABASE_SERVICE_KEY") else "NOT_SET",
                 "mock_workflows": len(self.mock_workflows),
                 "note": "Using mock data - set SUPABASE_URL and SUPABASE_SERVICE_KEY for database"
             }
