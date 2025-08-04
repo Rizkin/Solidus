@@ -117,63 +117,6 @@ async def health_check():
         }
     }
 
-@app.get("/api/templates")
-async def list_templates():
-    """List available workflow templates"""
-    try:
-        from src.services.templates import get_all_templates
-        templates = get_all_templates()
-        
-        return {
-            "templates": templates,
-            "total_templates": len(templates),
-            "deployment": "vercel-serverless",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "categories": list(set(t.get('category', 'General') for t in templates))
-        }
-    except ImportError:
-        # Fallback templates
-        return {
-            "templates": [
-                {
-                    "name": "trading_bot",
-                    "display_name": "Crypto Trading Bot",
-                    "description": "Automated trading with stop-loss and take-profit",
-                    "category": "Web3 Trading",
-                    "complexity": "Complex",
-                    "customizable_fields": ["trading_pair", "stop_loss", "take_profit"]
-                },
-                {
-                    "name": "lead_generation",
-                    "display_name": "Lead Generation System",
-                    "description": "Capture and qualify leads from multiple sources",
-                    "category": "Sales & Marketing",
-                    "complexity": "Medium",
-                    "customizable_fields": ["source", "crm_integration"]
-                },
-                {
-                    "name": "multi_agent_research",
-                    "display_name": "Multi-Agent Research Team",
-                    "description": "Collaborative AI agents for research tasks",
-                    "category": "AI Automation",
-                    "complexity": "Complex",
-                    "customizable_fields": ["research_topic", "agent_count"]
-                },
-                {
-                    "name": "web3_automation",
-                    "display_name": "Web3 DeFi Automation",
-                    "description": "Smart contract monitoring and DeFi operations",
-                    "category": "Blockchain",
-                    "complexity": "Complex",
-                    "customizable_fields": ["chain", "contract_address"]
-                }
-            ],
-            "total_templates": 4,
-            "deployment": "vercel-serverless",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "note": "Fallback templates - full service may not be available"
-        }
-
 @app.get("/api/debug")
 async def debug_info():
     """Debug information for troubleshooting"""
