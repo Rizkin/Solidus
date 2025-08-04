@@ -50,9 +50,9 @@ env/
 requirements-vercel.txt
 pytest.ini
 
-# Frontend files (not needed for API)
-public/
-frontend/
+# Keep frontend and public directories for serving static files
+# public/
+# frontend/
 
 # Git and IDE files
 .git/
