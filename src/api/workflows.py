@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Body, Depends
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import logging
+import uuid
 from src.services.state_generator import state_generator
 from src.services.validation import validator
 from src.utils.database_hybrid import db_service
@@ -400,4 +401,144 @@ async def get_block_types():
                 }
             }
         }
+    }
+
+# Template creation functions
+def create_trading_bot_template(customization: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a trading bot workflow template"""
+    workflow_id = str(uuid.uuid4())
+    trading_pair = customization.get('trading_pair', 'BTC/USD')
+    stop_loss = customization.get('stop_loss', -5)
+    take_profit = customization.get('take_profit', 10)
+    
+    return {
+        "id": workflow_id,
+        "user_id": "template-user",
+        "workspace_id": "template-workspace",
+        "name": f"Trading Bot - {trading_pair}",
+        "description": f"Automated trading bot for {trading_pair} with {stop_loss}% stop-loss",
+        "state": {
+            "blocks": {},
+            "edges": [],
+            "subflows": {},
+            "variables": {
+                "TRADING_PAIR": trading_pair,
+                "STOP_LOSS": stop_loss,
+                "TAKE_PROFIT": take_profit
+            },
+            "metadata": {
+                "version": "1.0.0",
+                "createdAt": datetime.utcnow().isoformat() + "Z",
+                "updatedAt": datetime.utcnow().isoformat() + "Z"
+            }
+        },
+        "color": "#FF6B6B",
+        "last_synced": datetime.utcnow(),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+def create_lead_gen_template(customization: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a lead generation workflow template"""
+    workflow_id = str(uuid.uuid4())
+    source = customization.get('source', 'website')
+    
+    return {
+        "id": workflow_id,
+        "user_id": "template-user",
+        "workspace_id": "template-workspace",
+        "name": f"Lead Generation - {source}",
+        "description": f"Automated lead capture and qualification from {source}",
+        "state": {
+            "blocks": {},
+            "edges": [],
+            "subflows": {},
+            "variables": {},
+            "metadata": {
+                "version": "1.0.0",
+                "createdAt": datetime.utcnow().isoformat() + "Z",
+                "updatedAt": datetime.utcnow().isoformat() + "Z"
+            }
+        },
+        "color": "#4ECDC4",
+        "last_synced": datetime.utcnow(),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+# Template endpoints
+@router.post("/workflows/templates/{template_name}")
+async def create_from_template(
+    template_name: str,
+    customization: Dict[str, Any] = Body(default={})
+):
+    """Create workflow from Agent Forge marketplace templates"""
+    
+    # Template mapping
+    templates = {
+        "trading_bot": create_trading_bot_template,
+        "lead_generation": create_lead_gen_template,
+        "multi_agent_research": lambda c: create_lead_gen_template(c),  # Reuse for now
+        "web3_automation": lambda c: create_trading_bot_template(c)     # Reuse for now
+    }
+    
+    if template_name not in templates:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Template '{template_name}' not found. Available templates: {list(templates.keys())}"
+        )
+    
+    # Generate workflow from template
+    workflow_data = templates[template_name](customization)
+    
+    # In a real implementation, you would save this to the database
+    # For now, we'll just return the generated workflow
+    
+    return {
+        "workflow_id": workflow_data["id"],
+        "name": workflow_data["name"],
+        "description": workflow_data["description"],
+        "template": template_name,
+        "customization": customization,
+        "message": f"Created from {template_name} template",
+        "next_steps": [
+            f"POST /api/workflows/{workflow_data['id']}/generate-state to generate AI state",
+            f"GET /api/workflows/{workflow_data['id']}/state to view the workflow"
+        ]
+    }
+
+@router.get("/templates")
+async def list_templates():
+    """List all available workflow templates"""
+    return {
+        "templates": [
+            {
+                "name": "trading_bot",
+                "display_name": "Crypto Trading Bot",
+                "description": "Automated trading with stop-loss and take-profit",
+                "category": "Web3 Trading",
+                "customizable_fields": ["trading_pair", "stop_loss", "take_profit"]
+            },
+            {
+                "name": "lead_generation",
+                "display_name": "Lead Generation System",
+                "description": "Capture and qualify leads from multiple sources",
+                "category": "Sales & Marketing",
+                "customizable_fields": ["source", "crm_integration"]
+            },
+            {
+                "name": "multi_agent_research",
+                "display_name": "Multi-Agent Research Team",
+                "description": "Collaborative AI agents for research tasks",
+                "category": "AI Automation",
+                "customizable_fields": ["research_topic", "agent_count"]
+            },
+            {
+                "name": "web3_automation",
+                "display_name": "Web3 DeFi Automation",
+                "description": "Smart contract monitoring and DeFi operations",
+                "category": "Blockchain",
+                "customizable_fields": ["chain", "contract_address"]
+            }
+        ]
     } 
