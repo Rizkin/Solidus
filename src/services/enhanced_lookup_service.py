@@ -32,16 +32,20 @@ class EnhancedLookupService:
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
         """Generate embedding for workflow description"""
         if not self.openai_client:
+            logger.warning("OpenAI client not initialized - no API key")
             return None
             
         try:
+            logger.info(f"Generating embedding for text: {text[:50]}...")
             response = await self.openai_client.embeddings.create(
                 model=self.embedding_model,
                 input=text
             )
+            logger.info("✅ Embedding generated successfully")
             return response.data[0].embedding
         except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
+            logger.error(f"❌ Error generating embedding: {e}")
+            logger.error(f"Error type: {type(e).__name__}")
             return None
     
     def generate_lookup_key(self, input_data: Dict[str, Any]) -> str:
