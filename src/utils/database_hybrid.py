@@ -164,7 +164,7 @@ class DatabaseService:
         """Get workflow by ID"""
         if self.use_database:
             try:
-                response = self.client.table("workflows").select("*").eq("id", workflow_id).execute()
+                response = self.client.table("workflow").select("*").eq("id", workflow_id).execute()
                 if response.data:
                     workflow = response.data[0]
                     # Parse state if it's a string
@@ -221,7 +221,7 @@ class DatabaseService:
                     "updated_at": datetime.utcnow().isoformat()
                 })
                 
-                response = self.client.table("workflows").insert(db_data).execute()
+                response = self.client.table("workflow").insert(db_data).execute()
                 if response.data:
                     return workflow_id
                 return None
@@ -243,7 +243,7 @@ class DatabaseService:
         if self.use_database:
             try:
                 state_json = json.dumps(state) if isinstance(state, dict) else state
-                response = self.client.table("workflows").update({
+                response = self.client.table("workflow").update({
                     "state": state_json,
                     "updated_at": datetime.utcnow().isoformat()
                 }).eq("id", workflow_id).execute()
@@ -349,7 +349,7 @@ class DatabaseService:
                 self.client.table("workflow_blocks").delete().eq("workflow_id", workflow_id).execute()
                 
                 # Delete workflow
-                response = self.client.table("workflows").delete().eq("id", workflow_id).execute()
+                response = self.client.table("workflow").delete().eq("id", workflow_id).execute()
                 return bool(response.data)
             except Exception as e:
                 logger.error(f"Database error: {e}")
@@ -374,7 +374,7 @@ class DatabaseService:
         """Get total workflow count"""
         if self.use_database:
             try:
-                response = self.client.table("workflows").select("id", count="exact").execute()
+                response = self.client.table("workflow").select("id", count="exact").execute()
                 return response.count or 0
             except Exception as e:
                 logger.error(f"Database error: {e}")
@@ -386,7 +386,7 @@ class DatabaseService:
         """Search workflows by name or description"""
         if self.use_database:
             try:
-                response = self.client.table("workflows").select("*").or_(
+                response = self.client.table("workflow").select("*").or_(
                     f"name.ilike.%{query}%,description.ilike.%{query}%"
                 ).limit(limit).execute()
                 
@@ -424,7 +424,7 @@ class DatabaseService:
         if self.use_database:
             try:
                 # Simple query to test connection
-                response = self.client.table("workflows").select("id").limit(1).execute()
+                response = self.client.table("workflow").select("id").limit(1).execute()
                 return {
                     "status": "healthy",
                     "database": "supabase",

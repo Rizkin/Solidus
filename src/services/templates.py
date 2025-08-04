@@ -670,4 +670,59 @@ class TemplateService:
         }
 
 # Create singleton instance
-template_service = TemplateService() 
+template_service = TemplateService()
+
+# Module-level functions for API compatibility
+def get_all_templates() -> Dict[str, Dict[str, Any]]:
+    """Get all available templates - module-level function for API compatibility"""
+    return template_service.get_all_templates()
+
+def get_template_by_name(template_name: str) -> Optional[Dict[str, Any]]:
+    """Get a specific template by name - module-level function for API compatibility"""
+    return template_service.get_template(template_name)
+
+def create_workflow_from_template(template: Dict[str, Any], customization: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a workflow from a template - module-level function for API compatibility"""
+    if not template:
+        raise ValueError("Template not found")
+    
+    template_name = template.get("name")
+    if not template_name:
+        raise ValueError("Template name not specified")
+    
+    # Generate workflow ID
+    workflow_id = str(uuid.uuid4())
+    
+    # Get template data
+    template_data = template.get("template_data", {})
+    
+    # Merge default variables with customization
+    default_variables = template_data.get("variables", {})
+    merged_variables = {**default_variables, **customization}
+    
+    # Create the workflow structure
+    workflow = {
+        "id": workflow_id,
+        "user_id": "template-user",
+        "workspace_id": "template-workspace", 
+        "name": template.get("display_name", template_name),
+        "description": template.get("description", ""),
+        "state": {
+            "blocks": template_data.get("blocks", {}),
+            "edges": template_data.get("edges", []),
+            "subflows": {},
+            "variables": merged_variables,
+            "metadata": {
+                "version": "1.0.0",
+                "template": template_name,
+                "createdAt": datetime.utcnow().isoformat() + "Z",
+                "updatedAt": datetime.utcnow().isoformat() + "Z"
+            }
+        },
+        "color": template.get("color", "#3972F6"),
+        "is_published": False,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    return workflow 

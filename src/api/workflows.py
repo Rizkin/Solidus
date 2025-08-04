@@ -606,7 +606,7 @@ async def list_templates():
         return {
             "templates": templates,
             "total_count": len(templates),
-            "categories": list(set(t.get('category', 'General') for t in templates))
+            "categories": list(set(t.get('category', 'General') for t in templates.values()))
         }
         
     except Exception as e:
