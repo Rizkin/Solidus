@@ -11,6 +11,7 @@ from src.models.schemas import StateGenerationOptions
 from src.models.connection import get_db, AsyncSessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
+from src.services.csv_processor import csv_processor
 
 logger = logging.getLogger(__name__)
 
@@ -542,3 +543,103 @@ async def list_templates():
             }
         ]
     } 
+
+@router.post("/csv/process")
+async def process_csv_workflows():
+    """
+    Process workflows from CSV data (workflow_rows and workflow_blocks_rows)
+    and store them in proper Supabase tables (public.workflow and public.workflow_blocks)
+    """
+    try:
+        logger.info("Starting CSV workflow processing...")
+        
+        # Process workflows from CSV data
+        processed_workflows = await csv_processor.process_workflows_from_csv()
+        
+        if not processed_workflows:
+            return {
+                "message": "No workflows were processed",
+                "processed_count": 0,
+                "status": "warning",
+                "suggestion": "Check if CSV tables (workflow_rows, workflow_blocks_rows) contain data"
+            }
+        
+        return {
+            "message": f"Successfully processed {len(processed_workflows)} workflows from CSV data",
+            "processed_count": len(processed_workflows),
+            "processed_workflows": [
+                {
+                    "id": w["id"],
+                    "name": w["name"],
+                    "description": w.get("description"),
+                    "block_count": len(w["state"]["blocks"]),
+                    "edge_count": len(w["state"]["edges"])
+                }
+                for w in processed_workflows
+            ],
+            "status": "success",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing CSV workflows: {e}")
+        raise HTTPException(status_code=500, detail=f"CSV processing failed: {str(e)}")
+
+@router.get("/csv/status")
+async def get_csv_processing_status():
+    """
+    Get status of CSV processing - shows counts of source and processed data
+    """
+    try:
+        status = await csv_processor.get_processing_status()
+        
+        return {
+            "csv_processing_status": status,
+            "instructions": {
+                "setup": "1. Create tables using scripts/create_supabase_schema.sql",
+                "load_data": "2. Load sample data using scripts/sample_data_inserts.sql",
+                "process": "3. Call POST /api/csv/process to convert CSV data to workflows"
+            },
+            "endpoints": {
+                "process_csv": "POST /api/csv/process",
+                "check_status": "GET /api/csv/status",
+                "view_workflows": "GET /api/workflows (after processing)"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting CSV status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/workflows")
+async def list_all_workflows(user_id: Optional[str] = None, limit: int = 50):
+    """
+    List all processed workflows from the database
+    """
+    try:
+        workflows = await db_service.list_workflows(user_id=user_id, limit=limit)
+        
+        return {
+            "workflows": [
+                {
+                    "id": w["id"],
+                    "name": w["name"],
+                    "description": w.get("description"),
+                    "user_id": w["user_id"],
+                    "workspace_id": w.get("workspace_id"),
+                    "color": w.get("color", "#3972F6"),
+                    "is_published": w.get("is_published", False),
+                    "created_at": w.get("created_at"),
+                    "updated_at": w.get("updated_at"),
+                    "block_count": len(w.get("state", {}).get("blocks", {})) if isinstance(w.get("state"), dict) else 0
+                }
+                for w in workflows
+            ],
+            "total_count": len(workflows),
+            "user_filter": user_id,
+            "limit": limit
+        }
+        
+    except Exception as e:
+        logger.error(f"Error listing workflows: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) 
