@@ -4,52 +4,42 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "^/$",
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(docs|redoc|openapi\\.json)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/frontend/(.*\\.(css|js|html|ico|png|jpg|svg))",
+      "dest": "/frontend/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    {
+      "src": "/frontend/?",
+      "dest": "/frontend/index.html"
+    },
+    {
+      "src": "/public/(.*)",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    {
+      "src": "/",
       "dest": "/public/index.html"
     },
     {
-      "src": "^/frontend$",
-      "dest": "/frontend/index.html"
-    },
-    {
-      "src": "^/frontend/$",
-      "dest": "/frontend/index.html"
-    },
-    {
-      "src": "^/frontend/(.*)$",
-      "dest": "/frontend/$1"
-    },
-    {
-      "src": "^/api$",
-      "dest": "/api/index.py"
-    },
-    {
-      "src": "^/api/(.*)$",
-      "dest": "/api/index.py"
-    },
-    {
-      "src": "^/(docs|redoc|openapi\\.json)$",
-      "dest": "/api/index.py"
-    },
-    {
-      "src": "^/public/(.*)$",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "^/(.*)$",
-      "dest": "/api/index.py"
+      "src": "/(.*)",
+      "dest": "api/index.py"
     }
   ],
   "functions": {
