@@ -50,4 +50,12 @@ Thumbs.db
 # Project specific
 data/*.sql
 logs/
-*.log 
+*.log # Environment files with secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+# Keep example files
+!.env.example
+!.env.*.example
