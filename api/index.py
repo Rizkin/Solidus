@@ -46,6 +46,25 @@ except Exception as e:
             "import_error": import_error or "Unknown error"
         }
     
+    @app.get("/api/debug/env")
+    async def debug_env():
+        """Debug endpoint to check environment variables"""
+        env_vars = {}
+        for key, value in os.environ.items():
+            if any(keyword in key.upper() for keyword in ['SUPABASE', 'ANTHROPIC', 'VERCEL']):
+                # Mask sensitive values
+                env_vars[key] = f"SET ({len(value)} chars)" if value else "NOT_SET"
+            elif key in ['PATH', 'PYTHONPATH']:
+                # Show first few chars for path variables
+                env_vars[key] = value[:50] + "..." if len(value) > 50 else value
+        
+        return {
+            "environment_variables": env_vars,
+            "supabase_url": os.getenv("SUPABASE_URL", "NOT_SET"),
+            "supabase_key": "SET" if os.getenv("SUPABASE_SERVICE_KEY") else "NOT_SET",
+            "anthropic_key": "SET" if os.getenv("ANTHROPIC_API_KEY") else "NOT_SET"
+        }
+    
     print("🔄 Using minimal fallback app")
 
 # Export the app directly - no complex handling
