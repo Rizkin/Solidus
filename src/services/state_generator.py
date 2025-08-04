@@ -1,6 +1,6 @@
 """
 Agent Forge State Generator Service
-AI-powered workflow state generation with intelligent caching
+AI-powered workflow state generation with intelligent caching and RAG
 """
 import os
 import json
@@ -14,32 +14,35 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 class StateGenerator:
-    """AI-powered workflow state generator for Agent Forge platform"""
+    """AI-powered workflow state generator for Agent Forge platform with RAG"""
     
     def __init__(self):
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.use_ai = bool(self.anthropic_api_key)
         
         # Import here to avoid circular imports
         from src.utils.database_hybrid import db_service
-        from src.services.lookup_service import lookup_service
+        
+        # Initialize enhanced lookup service with RAG capabilities
+        from src.services.enhanced_lookup_service import EnhancedLookupService
+        self.lookup_service = EnhancedLookupService(db_service, self.openai_api_key)
         
         self.db = db_service
-        self.lookup_service = lookup_service
         
         if self.use_ai:
             try:
                 import anthropic
                 self.client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
-                logger.info("✅ Claude AI integration enabled with caching")
+                logger.info("✅ Claude AI integration enabled with RAG caching")
             except ImportError:
                 logger.warning("❌ Anthropic library not installed, using fallback generation")
                 self.use_ai = False
         else:
-            logger.info("🔄 Using rule-based state generation with caching (no AI key)")
+            logger.info("🔄 Using rule-based state generation with RAG caching (no AI key)")
     
     async def generate_workflow_state(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Generate complete workflow state with intelligent caching"""
+        """Generate complete workflow state with intelligent RAG caching"""
         logger.info(f"🚀 Generating state for workflow: {workflow_id}")
         start_time = time.time()
         session_id = str(uuid.uuid4())
@@ -61,6 +64,8 @@ class StateGenerator:
             input_data = {
                 'workflow_id': workflow_id,
                 'workflow_type': self._determine_workflow_type(workflow, blocks),
+                'name': workflow.get('name', ''),
+                'description': workflow.get('description', ''),
                 'blocks': blocks,
                 'edges': self._infer_edges_from_positions(blocks),
                 'variables': workflow.get('variables', {})
@@ -69,13 +74,13 @@ class StateGenerator:
             # 3. Create temp record for tracking
             temp_id = await self.lookup_service.create_temp_record(session_id, input_data)
             
-            # 4. Check lookup table for similar workflows
-            logger.info("🔍 Checking cache for similar workflows...")
-            cached_result = await self.lookup_service.find_similar_workflows(input_data)
+            # 4. Check lookup table for similar workflows (hybrid search)
+            logger.info("🔍 Checking cache for similar workflows (hybrid search)...")
+            cached_result = await self.lookup_service.find_similar_workflows_hybrid(input_data)
             
             if cached_result:
-                cached_state, similarity_score = cached_result
-                logger.info(f"✅ Cache HIT! Using cached result with {similarity_score:.2%} similarity")
+                cached_state, similarity_score, match_type = cached_result
+                logger.info(f"✅ Cache HIT! Using cached result with {similarity_score:.2%} similarity ({match_type} match)")
                 
                 # 5a. Adapt cached state for current requirements
                 if similarity_score < 0.95:  # Not exact match
@@ -121,10 +126,10 @@ class StateGenerator:
                 # 6. Enhance and validate the state
                 final_state = self._enhance_generated_state(generated_state, workflow_id)
                 
-                # 7. Store in lookup table for future use
+                # 7. Store in lookup table with embedding for future use
                 generation_time = time.time() - start_time
-                logger.info("💾 Storing new pattern in cache for future use...")
-                await self.lookup_service.store_workflow_pattern(
+                logger.info("💾 Storing new pattern in cache with embedding for future use...")
+                await self.lookup_service.store_workflow_pattern_with_embedding(
                     input_data,
                     final_state,
                     generation_time
@@ -145,21 +150,30 @@ class StateGenerator:
     def _determine_workflow_type(self, workflow: Dict[str, Any], blocks: List[Dict[str, Any]]) -> str:
         """Determine the type of workflow based on blocks and metadata"""
         name = workflow.get('name', '').lower()
+        description = workflow.get('description', '').lower()
         block_types = [b.get('type') for b in blocks if b.get('type')]
         
         # Pattern matching
-        if 'trading' in name or 'crypto' in name or 'bot' in name:
+        combined_text = f"{name} {description}"
+        
+        if any(keyword in combined_text for keyword in ['trading', 'crypto', 'bot', 'exchange']):
             return 'trading_bot'
-        elif 'lead' in name or 'marketing' in name or 'crm' in name:
+        elif any(keyword in combined_text for keyword in ['lead', 'marketing', 'crm', 'customer']):
             return 'lead_generation'
         elif block_types.count('agent') >= 3:
             return 'multi_agent'
         elif 'api' in block_types and 'agent' in block_types:
             return 'integration'
-        elif 'support' in name or 'customer' in name:
+        elif any(keyword in combined_text for keyword in ['support', 'ticket', 'help']):
             return 'customer_support'
-        elif 'content' in name or 'writing' in name:
+        elif any(keyword in combined_text for keyword in ['content', 'writing', 'publish']):
             return 'content_generation'
+        elif any(keyword in combined_text for keyword in ['web3', 'defi', 'blockchain', 'smart contract']):
+            return 'web3_automation'
+        elif any(keyword in combined_text for keyword in ['data', 'etl', 'pipeline', 'transform']):
+            return 'data_pipeline'
+        elif any(keyword in combined_text for keyword in ['notification', 'alert', 'message']):
+            return 'notification_system'
         else:
             return 'general'
     
@@ -199,8 +213,10 @@ class StateGenerator:
             adaptation_prompt = f"""
             Adapt this cached workflow state to match the current requirements.
             Similarity score: {similarity_score:.2%}
+            Match type: semantic (RAG-based)
             
             Current requirements:
+            - Workflow Name: {current_input.get('name', 'Unnamed')}
             - Workflow Type: {current_input.get('workflow_type')}
             - Block Count: {len(current_input.get('blocks', []))}
             - Block Types: {[b.get('type') for b in current_input.get('blocks', [])]}
@@ -212,6 +228,7 @@ class StateGenerator:
             1. Updating block names/descriptions to match current context
             2. Adjusting variables if needed
             3. Preserving the overall structure
+            4. Maintaining semantic meaning while adapting to new requirements
             
             Return only the adapted JSON state.
             """
@@ -242,6 +259,7 @@ class StateGenerator:
                     if 'metadata' not in adapted_state:
                         adapted_state['metadata'] = {}
                     adapted_state['metadata']['ai_adapted'] = True
+                    adapted_state['metadata']['adaptation_method'] = 'rag_semantic'
                     
                     logger.info("✅ AI adaptation completed successfully")
                     return adapted_state
@@ -330,7 +348,9 @@ Return only valid JSON.
 """
         
         if workflow_data:
-            base_prompt += f"\n\nWorkflow context: {json.dumps(workflow_data, indent=2)}"
+            base_prompt += f"\n\nWorkflow context:\nName: {workflow_data.get('name', 'Unnamed')}\nDescription: {workflow_data.get('description', 'No description')}"
+            base_prompt += f"\nBlocks: {len(workflow_data.get('blocks', []))} total"
+            base_prompt += f"\nBlock types: {[b.get('type') for b in workflow_data.get('blocks', [])]}"
         
         return base_prompt
     
@@ -750,35 +770,21 @@ Return only valid JSON.
         return state
     
     async def analyze_workflow_pattern(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> str:
-        """Analyze workflow to determine its pattern/type"""
-        if not workflow_data:
-            # Analyze based on workflow_id or other available data
-            workflow_id_lower = workflow_id.lower()
-            
-            if any(term in workflow_id_lower for term in ["trade", "trading", "bot", "crypto", "btc", "eth"]):
-                return "trading_bot"
-            elif any(term in workflow_id_lower for term in ["lead", "sales", "crm", "marketing"]):
-                return "lead_generation"
-            elif any(term in workflow_id_lower for term in ["research", "multi", "team", "agent"]):
-                return "multi_agent"
-            elif any(term in workflow_id_lower for term in ["web3", "blockchain", "defi", "smart"]):
-                return "web3_automation"
+        """Analyze workflow pattern type"""
+        try:
+            if not workflow_data:
+                workflow = await self.db.get_workflow(workflow_id)
+                if not workflow:
+                    return "unknown"
+                blocks = await self.db.get_workflow_blocks(workflow_id)
             else:
-                return "basic"
-        
-        # Analyze workflow data content
-        content = str(workflow_data).lower()
-        
-        if any(term in content for term in ["trading", "market", "price", "crypto"]):
-            return "trading_bot"
-        elif any(term in content for term in ["lead", "sales", "qualification"]):
-            return "lead_generation"
-        elif any(term in content for term in ["research", "analysis", "multi-agent"]):
-            return "multi_agent"
-        elif any(term in content for term in ["web3", "blockchain", "contract"]):
-            return "web3_automation"
-        else:
-            return "basic"
+                workflow = workflow_data
+                blocks = workflow_data.get('blocks', [])
+            
+            return self._determine_workflow_type(workflow, blocks)
+        except Exception as e:
+            logger.error(f"Error analyzing workflow pattern: {e}")
+            return "unknown"
 
 # Global instance
 state_generator = StateGenerator() 

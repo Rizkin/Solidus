@@ -1,6 +1,9 @@
 -- Agent Forge State Generator - Supabase Schema
 -- Create the required tables for workflow processing
 
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Create workflow table
 CREATE TABLE public.workflow (
     id text NOT NULL,
@@ -48,10 +51,10 @@ CREATE TABLE public.workflow_blocks (
     updated_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT workflow_blocks_pkey PRIMARY KEY (id),
     CONSTRAINT workflow_blocks_workflow_id_workflow_id_fk 
-        FOREIGN KEY (workflow_id) REFERENCES workflow (id) ON DELETE CASCADE
+        FOREIGN KEY (workflow_id) REFERENCES workflow(id) ON DELETE CASCADE
 ) TABLESPACE pg_default;
 
--- Create indexes for performance
+-- Create indexes for workflow_blocks
 CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_id_idx 
     ON public.workflow_blocks USING btree (workflow_id) TABLESPACE pg_default;
 
@@ -64,7 +67,7 @@ CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_parent_idx
 CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_type_idx 
     ON public.workflow_blocks USING btree (workflow_id, type) TABLESPACE pg_default;
 
--- Create sample data tables for CSV input processing
+-- Create workflow_rows table (CSV input)
 CREATE TABLE public.workflow_rows (
     id text NOT NULL,
     user_id text NOT NULL,
@@ -72,14 +75,24 @@ CREATE TABLE public.workflow_rows (
     folder_id text NULL,
     name text NOT NULL,
     description text NULL,
+    state json NOT NULL,
     color text NOT NULL DEFAULT '#3972F6'::text,
+    last_synced timestamp without time zone NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    is_deployed boolean NOT NULL DEFAULT false,
+    deployed_state json NULL,
+    deployed_at timestamp without time zone NULL,
+    collaborators json NOT NULL DEFAULT '[]'::json,
+    run_count integer NOT NULL DEFAULT 0,
+    last_run_at timestamp without time zone NULL,
     variables json NULL DEFAULT '{}'::json,
     is_published boolean NOT NULL DEFAULT false,
-    created_at timestamp without time zone NOT NULL DEFAULT now(),
-    updated_at timestamp without time zone NOT NULL DEFAULT now(),
+    marketplace_data json NULL,
     CONSTRAINT workflow_rows_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 
+-- Create workflow_blocks_rows table (CSV input)
 CREATE TABLE public.workflow_blocks_rows (
     id text NOT NULL,
     workflow_id text NOT NULL,
@@ -97,5 +110,124 @@ CREATE TABLE public.workflow_blocks_rows (
     data jsonb NULL DEFAULT '{}'::jsonb,
     parent_id text NULL,
     extent text NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT workflow_blocks_rows_pkey PRIMARY KEY (id)
-) TABLESPACE pg_default; 
+) TABLESPACE pg_default;
+
+-- Create lookup table for intelligent caching
+CREATE TABLE public.workflow_lookup (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    lookup_key TEXT NOT NULL, -- Hash of input parameters
+    input_pattern JSONB NOT NULL, -- Original input characteristics
+    workflow_type TEXT NOT NULL, -- Type of workflow requested
+    block_count INTEGER,
+    block_types TEXT[], -- Array of block types
+    generated_state JSONB NOT NULL, -- The AI-generated state
+    usage_count INTEGER DEFAULT 1,
+    avg_generation_time FLOAT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    confidence_score FLOAT DEFAULT 1.0, -- How reliable this pattern is
+    semantic_description TEXT, -- Rich description for embeddings
+    embedding vector(1536), -- OpenAI embedding vector
+    UNIQUE(lookup_key)
+);
+
+-- Create indexes for workflow_lookup
+CREATE INDEX IF NOT EXISTS idx_workflow_lookup_key ON workflow_lookup(lookup_key);
+CREATE INDEX IF NOT EXISTS idx_workflow_lookup_type ON workflow_lookup(workflow_type);
+CREATE INDEX IF NOT EXISTS idx_workflow_lookup_usage ON workflow_lookup(usage_count DESC);
+CREATE INDEX IF NOT EXISTS workflow_lookup_embedding_idx 
+    ON workflow_lookup USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- Create temporary table for AI processing
+CREATE TABLE public.workflow_temp (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    input_data JSONB NOT NULL,
+    ai_response JSONB,
+    lookup_match_id UUID REFERENCES workflow_lookup(id),
+    similarity_score FLOAT,
+    processing_status TEXT DEFAULT 'pending', -- pending, processing, completed, failed
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Create index for session lookups
+CREATE INDEX IF NOT EXISTS idx_workflow_temp_session ON workflow_temp(session_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_temp_status ON workflow_temp(processing_status);
+
+-- Create similarity search function (structured)
+CREATE OR REPLACE FUNCTION find_similar_workflows(
+    p_workflow_type TEXT,
+    p_block_types TEXT[],
+    p_block_count INTEGER,
+    p_similarity_threshold FLOAT DEFAULT 0.8
+)
+RETURNS TABLE (
+    lookup_id UUID,
+    similarity_score FLOAT,
+    generated_state JSONB,
+    usage_count INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        wl.id,
+        -- Calculate similarity score based on multiple factors
+        (
+            CASE WHEN wl.workflow_type = p_workflow_type THEN 0.4 ELSE 0.0 END +
+            CASE 
+                WHEN wl.block_count = p_block_count THEN 0.3
+                WHEN ABS(wl.block_count - p_block_count) <= 2 THEN 0.2
+                ELSE 0.0
+            END +
+            -- Array similarity for block types
+            (
+                SELECT COUNT(*)::FLOAT / GREATEST(
+                    array_length(wl.block_types, 1),
+                    array_length(p_block_types, 1)
+                ) * 0.3
+                FROM unnest(wl.block_types) AS a(type)
+                WHERE a.type = ANY(p_block_types)
+            )
+        ) AS similarity,
+        wl.generated_state,
+        wl.usage_count
+    FROM workflow_lookup wl
+    WHERE 
+        -- Basic filters for performance
+        wl.workflow_type = p_workflow_type OR 
+        wl.block_types && p_block_types -- Has overlapping block types
+    ORDER BY similarity DESC, wl.usage_count DESC
+    LIMIT 5;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create semantic similarity search function (RAG)
+CREATE OR REPLACE FUNCTION search_similar_workflows_semantic(
+    query_embedding vector,
+    match_threshold float DEFAULT 0.8,
+    match_count int DEFAULT 5
+)
+RETURNS TABLE (
+    lookup_id UUID,
+    similarity_score float,
+    generated_state jsonb,
+    semantic_description text
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        wl.id,
+        1 - (wl.embedding <=> query_embedding) as similarity,
+        wl.generated_state,
+        wl.semantic_description
+    FROM workflow_lookup wl
+    WHERE 1 - (wl.embedding <=> query_embedding) > match_threshold
+    ORDER BY wl.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql; 

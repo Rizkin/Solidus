@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import json
 from src.services.csv_processor import csv_processor
 from src.services.lookup_service import lookup_service
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +25,14 @@ async def generate_workflow_state(
     options: Optional[StateGenerationOptions] = Body(default=None)
 ):
     """
-    Generate Agent Forge-compatible workflow state using AI with intelligent caching.
+    Generate Agent Forge-compatible workflow state using AI with intelligent RAG caching.
     
     Features:
-    - Intelligent caching system (70-80% faster for similar workflows)
+    - Intelligent RAG caching system (70-80% faster for similar workflows)
     - Automatic pattern recognition and adaptation
     - Cost optimization through reduced AI calls
     - Learning system that improves over time
+    - Semantic understanding with embeddings
     """
     try:
         logger.info(f"Generating state for workflow {workflow_id}")
@@ -39,7 +41,7 @@ async def generate_workflow_state(
         if not options:
             options = StateGenerationOptions()
         
-        # Generate state with intelligent caching
+        # Generate state with intelligent RAG caching
         generated_state = await state_generator.generate_workflow_state(workflow_id)
         
         # Validate the generated state
@@ -62,6 +64,7 @@ async def generate_workflow_state(
         # Check if this was cached
         cache_info = generated_state.get('metadata', {})
         is_cached = cache_info.get('adapted_from_cache', False)
+        match_type = cache_info.get('adaptation_method', 'structural')
         
         return {
             "workflow_id": workflow_id,
@@ -73,14 +76,16 @@ async def generate_workflow_state(
                 "used_cache": is_cached,
                 "similarity_score": cache_info.get('similarity_score'),
                 "cache_performance": cache_info.get('cache_performance'),
-                "ai_adapted": cache_info.get('ai_adapted', False)
+                "ai_adapted": cache_info.get('ai_adapted', False),
+                "match_type": match_type
             },
             "generation_metadata": {
                 "model": "claude-3-sonnet" if not is_cached else "cached+adapted",
                 "platform": "agent-forge",
                 "timestamp": datetime.utcnow().isoformat(),
                 "options": options.dict(),
-                "intelligent_caching": "enabled"
+                "intelligent_caching": "enabled",
+                "rag_enhanced": "enabled"
             }
         }
         
@@ -93,7 +98,7 @@ async def generate_workflow_state(
 @router.get("/workflows/cache/stats")
 async def get_cache_statistics():
     """
-    Get statistics about the intelligent caching system.
+    Get statistics about the intelligent RAG caching system.
     
     Returns:
     - Total patterns cached
@@ -103,7 +108,11 @@ async def get_cache_statistics():
     - Most popular workflow types
     """
     try:
-        stats = await lookup_service.get_cache_statistics()
+        # Use the enhanced lookup service for RAG stats
+        from src.services.enhanced_lookup_service import EnhancedLookupService
+        enhanced_lookup = EnhancedLookupService(db_service, os.getenv("OPENAI_API_KEY"))
+        
+        stats = await enhanced_lookup.get_cache_statistics()
         
         # Add additional insights
         if db_service.use_database:
@@ -134,14 +143,17 @@ async def get_cache_statistics():
             "cache_statistics": stats,
             "system_info": {
                 "caching_enabled": True,
-                "similarity_threshold": lookup_service.similarity_threshold,
-                "ai_adaptation_enabled": lookup_service.use_ai_adaptation,
-                "database_connected": db_service.use_database
+                "rag_enhanced": True,
+                "similarity_threshold": 0.8,
+                "ai_adaptation_enabled": True,
+                "database_connected": db_service.use_database,
+                "openai_embeddings": bool(os.getenv("OPENAI_API_KEY"))
             },
             "performance_benefits": {
                 "speed_improvement": "5-10x faster for cached patterns",
                 "cost_reduction": "70-80% fewer AI API calls",
-                "learning_system": "Gets smarter over time"
+                "learning_system": "Gets smarter over time",
+                "semantic_understanding": "Natural language pattern matching"
             }
         }
     except Exception as e:
@@ -155,7 +167,7 @@ async def clear_cache(
     confirm: bool = Query(False, description="Confirmation required")
 ):
     """
-    Clear entries from the intelligent cache.
+    Clear entries from the intelligent RAG cache.
     
     Parameters:
     - older_than_days: Clear entries older than X days (default: 30)
@@ -212,7 +224,7 @@ async def clear_cache(
 @router.get("/workflows/cache/similar/{workflow_id}")
 async def find_similar_cached_workflows(workflow_id: str):
     """
-    Find workflows similar to the given workflow ID in the cache.
+    Find workflows similar to the given workflow ID in the RAG cache.
     Useful for understanding what patterns are available.
     """
     try:
@@ -227,27 +239,34 @@ async def find_similar_cached_workflows(workflow_id: str):
         input_data = {
             'workflow_id': workflow_id,
             'workflow_type': state_generator._determine_workflow_type(workflow, blocks),
+            'name': workflow.get('name', ''),
+            'description': workflow.get('description', ''),
             'blocks': blocks,
             'edges': state_generator._infer_edges_from_positions(blocks)
         }
         
-        # Find similar workflows
-        similar_result = await lookup_service.find_similar_workflows(input_data)
+        # Use enhanced lookup service for hybrid search
+        from src.services.enhanced_lookup_service import EnhancedLookupService
+        enhanced_lookup = EnhancedLookupService(db_service, os.getenv("OPENAI_API_KEY"))
+        
+        # Find similar workflows using hybrid search
+        similar_result = await enhanced_lookup.find_similar_workflows_hybrid(input_data)
         
         if similar_result:
-            cached_state, similarity_score = similar_result
+            cached_state, similarity_score, match_type = similar_result
             return {
                 "workflow_id": workflow_id,
                 "found_similar": True,
                 "similarity_score": f"{similarity_score:.2%}",
+                "match_type": match_type,
                 "cached_pattern": {
                     "workflow_type": cached_state.get('metadata', {}).get('workflow_type'),
                     "block_count": len(cached_state.get('blocks', {})),
                     "has_cache_metadata": 'metadata' in cached_state,
                     "generated_at": cached_state.get('metadata', {}).get('generated_at')
                 },
-                "would_use_cache": similarity_score >= lookup_service.similarity_threshold,
-                "performance_benefit": "5-10x faster generation" if similarity_score >= lookup_service.similarity_threshold else "Would generate new"
+                "would_use_cache": similarity_score >= 0.8,
+                "performance_benefit": "5-10x faster generation" if similarity_score >= 0.8 else "Would generate new"
             }
         else:
             return {
@@ -267,12 +286,14 @@ async def find_similar_cached_workflows(workflow_id: str):
 @router.post("/workflows/cache/preload")
 async def preload_common_patterns():
     """
-    Preload common workflow patterns into the cache.
+    Preload common workflow patterns into the RAG cache.
     Useful for warming up the cache with popular templates.
     """
     try:
         from src.services.templates import template_service
+        from src.services.enhanced_lookup_service import EnhancedLookupService
         
+        enhanced_lookup = EnhancedLookupService(db_service, os.getenv("OPENAI_API_KEY"))
         preloaded_count = 0
         templates = template_service.get_all_templates()
         
@@ -284,7 +305,7 @@ async def preload_common_patterns():
                 # Create a mock workflow ID for the template
                 template_workflow_id = f"template_{template_name}"
                 
-                # Generate and cache the state
+                # Generate and cache the state with embedding
                 generated_state = await state_generator.generate_workflow_state(
                     template_workflow_id, 
                     template_workflow_data
@@ -298,15 +319,82 @@ async def preload_common_patterns():
                 continue
         
         return {
-            "message": "Cache preloading completed",
+            "message": "RAG cache preloading completed",
             "templates_processed": len(templates),
             "patterns_preloaded": preloaded_count,
             "cache_status": "warmed_up",
-            "next_generations": "Will be significantly faster"
+            "next_generations": "Will be significantly faster with semantic understanding"
         }
         
     except Exception as e:
         logger.error(f"Error preloading cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/workflows/semantic-search")
+async def semantic_workflow_search(query: str = Body(..., embed=True)):
+    """
+    Search for workflows using natural language queries with RAG.
+    
+    Example queries:
+    - "I need a bot that trades crypto with stop loss"
+    - "Create a workflow to capture leads from Facebook"
+    - "Multi-agent system for research"
+    
+    This endpoint uses embeddings to find semantically similar workflows.
+    """
+    try:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(status_code=400, detail="OpenAI API key required for semantic search")
+        
+        # Use enhanced lookup service for semantic search
+        from src.services.enhanced_lookup_service import EnhancedLookupService
+        enhanced_lookup = EnhancedLookupService(db_service, os.getenv("OPENAI_API_KEY"))
+        
+        # Create semantic description from query
+        semantic_desc = f"User query: {query}"
+        embedding = await enhanced_lookup.generate_embedding(semantic_desc)
+        
+        if not embedding:
+            raise HTTPException(status_code=500, detail="Failed to generate embedding")
+        
+        # Search semantically
+        if db_service.use_database:
+            semantic_results = db_service.client.rpc(
+                'search_similar_workflows_semantic',
+                {
+                    'query_embedding': embedding,
+                    'match_threshold': 0.75,
+                    'match_count': 5
+                }
+            ).execute()
+            
+            if semantic_results.data and len(semantic_results.data) > 0:
+                matches = []
+                for result in semantic_results.data:
+                    matches.append({
+                        "similarity_score": f"{result['similarity_score']:.2%}",
+                        "semantic_description": result['semantic_description'],
+                        "workflow_type": result['generated_state'].get('metadata', {}).get('workflow_type', 'unknown')
+                    })
+                
+                return {
+                    "query": query,
+                    "matches_found": len(matches),
+                    "semantic_matches": matches,
+                    "message": f"Found {len(matches)} semantically similar workflows"
+                }
+        
+        return {
+            "query": query,
+            "matches_found": 0,
+            "semantic_matches": [],
+            "message": "No semantic matches found"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in semantic search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/workflows/{workflow_id}/marketplace-preview")
