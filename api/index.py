@@ -11,12 +11,16 @@ current_dir = Path(__file__).parent
 parent_dir = current_dir.parent
 sys.path.insert(0, str(parent_dir))
 
+# Store import error message
+import_error = None
+
 # Simple approach - try to import and use the app directly
 try:
     from src.main import app
     print("✅ Successfully imported main app")
 except Exception as e:
-    print(f"❌ Failed to import main app: {e}")
+    import_error = str(e)
+    print(f"❌ Failed to import main app: {import_error}")
     
     # Create minimal FastAPI app as fallback
     from fastapi import FastAPI
@@ -30,7 +34,7 @@ except Exception as e:
             "status": "running",
             "deployment": "vercel-serverless",
             "message": "Minimal fallback handler working!",
-            "error": str(e)
+            "error": import_error or "Unknown error"
         }
     
     @app.get("/api/health")
@@ -39,7 +43,7 @@ except Exception as e:
             "status": "healthy",
             "deployment": "vercel-serverless",
             "handler": "fallback",
-            "import_error": str(e)
+            "import_error": import_error or "Unknown error"
         }
     
     print("🔄 Using minimal fallback app")
