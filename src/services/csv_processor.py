@@ -84,156 +84,166 @@ class CSVProcessor:
             return self._get_mock_workflow_blocks_rows()
     
     def _get_mock_workflow_rows(self) -> List[Dict[str, Any]]:
-        """Mock workflow rows data for development"""
+        """Mock workflow rows data matching ACTUAL CSV structure"""
         return [
             {
-                'id': 'wf_001',
-                'user_id': 'user_123',
-                'workspace_id': 'ws_456',
+                'id': '79e8076f-0ae0-4b6f-9d14-65364ddae6d2',
+                'user_id': 'sEfcNW1TZedrJ8mDW81UFVtZpZXVd3Mf',
+                'workspace_id': 'f639bbc2-cbda-49c3-9301-9c632c8e86e2',
                 'folder_id': None,
-                'name': 'Trading Bot Workflow',
-                'description': 'Automated cryptocurrency trading with risk management',
-                'color': '#FF6B6B',
-                'variables': {'TRADING_PAIR': 'BTC/USD', 'STOP_LOSS': -5, 'TAKE_PROFIT': 10},
+                'name': 'default-agent',
+                'description': 'Your first workflow - start building here!',
+                'color': '#3972F6',
+                'variables': {},
                 'is_published': False,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
+                'created_at': datetime(2025, 7, 22, 7, 10, 51, 778000),
+                'updated_at': datetime(2025, 7, 22, 7, 10, 51, 778000)
             },
             {
-                'id': 'wf_002',
-                'user_id': 'user_123',
-                'workspace_id': 'ws_456',
+                'id': '81e98d1e-459d-4e1d-b9c3-e1e56f8155ab',
+                'user_id': 'H2sjCYSjVkkhay0GpyXM53XmEWwDVgjc',
+                'workspace_id': 'd8b61a6b-d682-4d70-8f39-1261eb4d880b',
                 'folder_id': None,
-                'name': 'Lead Generation System',
-                'description': 'Automated lead capture and qualification pipeline',
-                'color': '#4ECDC4',
-                'variables': {'LEAD_SOURCE': 'website', 'QUALIFICATION_THRESHOLD': 7},
+                'name': 'workflow-test',
+                'description': 'Your first workflow - start building here!',
+                'color': '#3972F6',
+                'variables': {},
                 'is_published': False,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
+                'created_at': datetime(2025, 7, 21, 14, 25, 55, 945000),
+                'updated_at': datetime(2025, 7, 22, 7, 38, 15, 676000)
             },
             {
-                'id': 'wf_003',
-                'user_id': 'user_789',
-                'workspace_id': 'ws_789',
+                'id': 'af18372b-03e8-45fd-9be5-3ac559c88f57',
+                'user_id': 'H2sjCYSjVkkhay0GpyXM53XmEWwDVgjc',
+                'workspace_id': 'd8b61a6b-d682-4d70-8f39-1261eb4d880b',
                 'folder_id': None,
-                'name': 'Multi-Agent Research Team',
-                'description': 'Collaborative AI agents for comprehensive research tasks',
-                'color': '#9B59B6',
-                'variables': {'RESEARCH_TOPIC': 'Market Analysis', 'AGENT_COUNT': 4},
-                'is_published': True,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
+                'name': 'arctic-constellation',
+                'description': 'New workflow',
+                'color': '#15803D',
+                'variables': {},
+                'is_published': False,
+                'created_at': datetime(2025, 7, 21, 14, 26, 24, 553000),
+                'updated_at': datetime(2025, 7, 21, 14, 26, 24, 553000)
             }
         ]
     
     def _get_mock_workflow_blocks_rows(self) -> List[Dict[str, Any]]:
-        """Mock workflow blocks rows data for development"""
+        """Mock workflow blocks rows data matching ACTUAL CSV structure"""
         return [
-            # Trading Bot Workflow Blocks
+            # Agent Block from workflow-test
             {
-                'id': 'block_001',
-                'workflow_id': 'wf_001',
-                'type': 'starter',
-                'name': 'Market Monitor',
-                'position_x': 100,
-                'position_y': 100,
+                'id': '135552e8-592e-4567-bf09-156b0a5e28f0',
+                'workflow_id': '81e98d1e-459d-4e1d-b9c3-e1e56f8155ab',
+                'type': 'agent',
+                'name': 'Agent 1',
+                'position_x': 556.9230769230769,
+                'position_y': -119.80769230769232,
                 'enabled': True,
                 'horizontal_handles': True,
                 'is_wide': False,
                 'advanced_mode': False,
-                'height': 80,
-                'sub_blocks': {'startWorkflow': 'schedule', 'scheduleType': 'interval', 'interval': '1m'},
-                'outputs': {'success': 'block_002'},
+                'height': 0,
+                'sub_blocks': {
+                    "model": {"id": "model", "type": "combobox", "value": "gemini-2.5-pro"},
+                    "tools": {"id": "tools", "type": "tool-input", "value": [{"type": "elevenlabs", "title": "ElevenLabs", "params": {"apiKey": "sk_539725a6d8b99b16a11467e7b1cb7d514233f90a58dc4823", "voiceId": "Xb7hH8MSUJpSbSDYk0k2"}, "isExpanded": True, "usageControl": "auto"}]},
+                    "systemPrompt": {"id": "systemPrompt", "type": "long-input", "value": "You are an assistant that transitions what the user says into text to speech using elevenlabs and sends them the URL to the output."},
+                    "userPrompt": {"id": "userPrompt", "type": "long-input", "value": "<start>"},
+                    "temperature": {"id": "temperature", "type": "slider", "value": None}
+                },
+                'outputs': {"model": "string", "tokens": "any", "content": "string", "toolCalls": "any"},
                 'data': {},
                 'parent_id': None,
                 'extent': None
             },
+            # API Block from workflow-test
             {
-                'id': 'block_002',
-                'workflow_id': 'wf_001',
+                'id': 'a091ef02-b50b-425f-b5cf-f3a936281c32',
+                'workflow_id': '81e98d1e-459d-4e1d-b9c3-e1e56f8155ab',
                 'type': 'api',
-                'name': 'Fetch Price Data',
-                'position_x': 300,
-                'position_y': 100,
+                'name': 'API 1',
+                'position_x': 959.7926327015055,
+                'position_y': 129.0738138570569,
                 'enabled': True,
                 'horizontal_handles': True,
                 'is_wide': False,
                 'advanced_mode': False,
-                'height': 80,
+                'height': 0,
                 'sub_blocks': {
-                    'url': 'https://api.binance.com/api/v3/ticker/price',
-                    'method': 'GET',
-                    'params': {'symbol': 'BTCUSDT'}
+                    "url": {"id": "url", "type": "short-input", "value": "https://api.coingecko.com/api/v3/search/trending"},
+                    "method": {"id": "method", "type": "dropdown", "value": "GET"},
+                    "headers": {"id": "headers", "type": "table", "value": [{"id": "58f892db-c69b-49d0-a803-33e9ed4c25e1", "cells": {"Key": "Accept", "Value": "application/json"}}]}
                 },
-                'outputs': {'success': 'block_003', 'error': 'block_006'},
+                'outputs': {"data": "any", "status": "number", "headers": "json"},
                 'data': {},
                 'parent_id': None,
                 'extent': None
             },
+            # Starter Block from default-agent
             {
-                'id': 'block_003',
-                'workflow_id': 'wf_001',
-                'type': 'agent',
-                'name': 'Trading Decision Agent',
-                'position_x': 500,
-                'position_y': 100,
-                'enabled': True,
-                'horizontal_handles': True,
-                'is_wide': False,
-                'advanced_mode': True,
-                'height': 120,
-                'sub_blocks': {
-                    'model': 'gpt-4',
-                    'systemPrompt': 'Analyze market data and make trading decisions based on technical indicators',
-                    'temperature': 0.3
-                },
-                'outputs': {'buy': 'block_004', 'sell': 'block_005', 'hold': 'block_001'},
-                'data': {},
-                'parent_id': None,
-                'extent': None
-            },
-            # Lead Generation Workflow Blocks
-            {
-                'id': 'block_101',
-                'workflow_id': 'wf_002',
+                'id': 'cb7ebf84-9d43-45bf-a327-cca64d30d602',
+                'workflow_id': '79e8076f-0ae0-4b6f-9d14-65364ddae6d2',
                 'type': 'starter',
-                'name': 'Lead Capture',
+                'name': 'Start',
                 'position_x': 100,
                 'position_y': 100,
                 'enabled': True,
                 'horizontal_handles': True,
                 'is_wide': False,
                 'advanced_mode': False,
-                'height': 80,
+                'height': 95,
                 'sub_blocks': {
-                    'startWorkflow': 'webhook',
-                    'webhookPath': '/lead-capture',
-                    'method': 'POST'
+                    "startWorkflow": {"id": "startWorkflow", "type": "dropdown", "value": "manual"},
+                    "scheduleType": {"id": "scheduleType", "type": "dropdown", "value": "daily"},
+                    "webhookPath": {"id": "webhookPath", "type": "short-input", "value": ""}
                 },
-                'outputs': {'success': 'block_102'},
+                'outputs': {"response": {"type": {"input": "any"}}},
                 'data': {},
                 'parent_id': None,
                 'extent': None
             },
+            # Starter Block from workflow-test
             {
-                'id': 'block_102',
-                'workflow_id': 'wf_002',
-                'type': 'agent',
-                'name': 'Lead Qualifier Agent',
-                'position_x': 300,
+                'id': 'f668ee62-8abb-49df-9b4e-b7d5e18f11df',
+                'workflow_id': '81e98d1e-459d-4e1d-b9c3-e1e56f8155ab',
+                'type': 'starter',
+                'name': 'Start',
+                'position_x': 100,
                 'position_y': 100,
                 'enabled': True,
                 'horizontal_handles': True,
                 'is_wide': False,
-                'advanced_mode': True,
-                'height': 120,
+                'advanced_mode': False,
+                'height': 95,
                 'sub_blocks': {
-                    'model': 'gpt-4',
-                    'systemPrompt': 'Qualify leads based on company size, budget, and needs. Score from 1-10.',
-                    'temperature': 0.5
+                    "startWorkflow": {"id": "startWorkflow", "type": "dropdown", "value": "manual"},
+                    "scheduleType": {"id": "scheduleType", "type": "dropdown", "value": "daily"},
+                    "webhookPath": {"id": "webhookPath", "type": "short-input", "value": "732a975e-4a63-4c5c-bee4-d8061444ae24"},
+                    "webhookProvider": {"id": "webhookProvider", "type": "unknown", "value": "generic"}
                 },
-                'outputs': {'qualified': 'block_103', 'unqualified': 'block_105'},
+                'outputs': {"response": {"type": {"input": "any"}}},
+                'data': {},
+                'parent_id': None,
+                'extent': None
+            },
+            # Starter Block from arctic-constellation
+            {
+                'id': '1814dd59-5ded-43ed-9b90-549861b8bbde',
+                'workflow_id': 'af18372b-03e8-45fd-9be5-3ac559c88f57',
+                'type': 'starter',
+                'name': 'Start',
+                'position_x': 100,
+                'position_y': 100,
+                'enabled': True,
+                'horizontal_handles': True,
+                'is_wide': False,
+                'advanced_mode': False,
+                'height': 95,
+                'sub_blocks': {
+                    "startWorkflow": {"id": "startWorkflow", "type": "dropdown", "value": "manual"},
+                    "scheduleType": {"id": "scheduleType", "type": "dropdown", "value": "daily"},
+                    "timezone": {"id": "timezone", "type": "dropdown", "value": "UTC"}
+                },
+                'outputs': {"response": {"type": {"input": "any"}}},
                 'data': {},
                 'parent_id': None,
                 'extent': None
