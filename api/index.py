@@ -11,14 +11,14 @@ current_dir = Path(__file__).parent
 parent_dir = current_dir.parent
 sys.path.insert(0, str(parent_dir))
 
-# Store import error message
-import_error = None
-
 # Debug environment variables
 print("DEBUG: Checking environment variables...")
 print(f"SUPABASE_URL: {'SET' if os.getenv('SUPABASE_URL') else 'NOT_SET'}")
 print(f"SUPABASE_SERVICE_KEY: {'SET' if os.getenv('SUPABASE_SERVICE_KEY') else 'NOT_SET'}")
 print(f"ANTHROPIC_API_KEY: {'SET' if os.getenv('ANTHROPIC_API_KEY') else 'NOT_SET'}")
+
+# Store import error message
+import_error = None
 
 # Simple approach - try to import and use the app directly
 try:
@@ -112,6 +112,34 @@ except Exception as e:
         except Exception as import_error:
             result["supabase_library"] = f"import_failed: {str(import_error)}"
             result["error"] = str(import_error)
+        
+        return result
+    
+    @app.get("/api/debug/test-env")
+    async def test_env():
+        """Test endpoint to manually set environment variables for debugging"""
+        # This is for testing purposes only - in a real scenario, you would set these in Vercel
+        test_supabase_url = "https://test.supabase.co"
+        test_supabase_key = "test-key-12345"
+        
+        result = {
+            "original_env": {
+                "supabase_url": os.getenv("SUPABASE_URL", "NOT_SET"),
+                "supabase_key": "SET" if os.getenv("SUPABASE_SERVICE_KEY") else "NOT_SET"
+            },
+            "test_env": {
+                "supabase_url": test_supabase_url,
+                "supabase_key": test_supabase_key
+            }
+        }
+        
+        # Try to create a client with test values
+        try:
+            from supabase import create_client
+            client = create_client(test_supabase_url, test_supabase_key)
+            result["client_test"] = "success"
+        except Exception as e:
+            result["client_test"] = f"failed: {str(e)}"
         
         return result
     
