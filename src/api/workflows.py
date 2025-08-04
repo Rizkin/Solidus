@@ -545,70 +545,133 @@ async def list_templates():
     } 
 
 @router.post("/csv/process")
-async def process_csv_workflows():
+async def process_csv_workflows(force_reprocess: bool = False):
     """
-    Process workflows from CSV data (workflow_rows and workflow_blocks_rows)
-    and store them in proper Supabase tables (public.workflow and public.workflow_blocks)
+    ONE-TIME MIGRATION: Process CSV input data → Supabase output tables
+    
+    This is a one-time migration process that:
+    1. Reads from workflow_rows and workflow_blocks_rows (CSV INPUT)
+    2. Generates proper Agent Forge state JSON
+    3. Stores in public.workflow and public.workflow_blocks (OUTPUT)
+    4. Prevents duplicate entries with intelligent skip logic
+    
+    Args:
+        force_reprocess: If true, will reprocess even existing workflows (for testing)
     """
     try:
-        logger.info("Starting CSV workflow processing...")
+        logger.info("🚀 Starting ONE-TIME CSV migration...")
         
-        # Process workflows from CSV data
-        processed_workflows = await csv_processor.process_workflows_from_csv()
+        # Run the migration with duplicate prevention
+        migration_result = await csv_processor.process_workflows_from_csv(force_reprocess=force_reprocess)
         
-        if not processed_workflows:
-            return {
-                "message": "No workflows were processed",
-                "processed_count": 0,
-                "status": "warning",
-                "suggestion": "Check if CSV tables (workflow_rows, workflow_blocks_rows) contain data"
-            }
-        
-        return {
-            "message": f"Successfully processed {len(processed_workflows)} workflows from CSV data",
-            "processed_count": len(processed_workflows),
-            "processed_workflows": [
-                {
-                    "id": w["id"],
-                    "name": w["name"],
-                    "description": w.get("description"),
-                    "block_count": len(w["state"]["blocks"]),
-                    "edge_count": len(w["state"]["edges"])
+        # Handle different result types
+        if isinstance(migration_result, dict):
+            if migration_result.get("status") == "already_processed":
+                return {
+                    **migration_result,
+                    "migration_type": "one_time_csv_to_supabase",
+                    "duplicate_prevention": "enabled",
+                    "next_steps": {
+                        "view_data": "GET /api/workflows",
+                        "force_rerun": "POST /api/csv/process?force_reprocess=true",
+                        "check_status": "GET /api/csv/status"
+                    }
                 }
-                for w in processed_workflows
-            ],
-            "status": "success",
+            elif migration_result.get("status") == "error":
+                raise HTTPException(status_code=500, detail=migration_result)
+            else:
+                # Success case
+                return {
+                    **migration_result,
+                    "duplicate_prevention": "enabled",
+                    "data_flow": "CSV Input → API Processing → Supabase Output",
+                    "next_steps": {
+                        "view_migrated_data": "GET /api/workflows",
+                        "check_specific_workflow": "GET /api/workflows/{workflow_id}/state",
+                        "migration_status": "GET /api/csv/status"
+                    }
+                }
+        
+        # Fallback for legacy response format
+        return {
+            "message": "CSV migration completed",
+            "results": migration_result,
+            "migration_type": "one_time_csv_to_supabase",
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
         
     except Exception as e:
-        logger.error(f"Error processing CSV workflows: {e}")
-        raise HTTPException(status_code=500, detail=f"CSV processing failed: {str(e)}")
+        logger.error(f"Error in CSV migration endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"CSV migration failed: {str(e)}")
 
 @router.get("/csv/status")
-async def get_csv_processing_status():
+async def get_csv_migration_status():
     """
-    Get status of CSV processing - shows counts of source and processed data
+    Get comprehensive status of ONE-TIME CSV migration
+    
+    Shows:
+    - Input data counts (CSV tables)
+    - Output data counts (Supabase tables) 
+    - Migration completion status
+    - Duplicate prevention status
+    - Next steps and instructions
     """
     try:
-        status = await csv_processor.get_processing_status()
+        status = await csv_processor.get_migration_status()
         
         return {
-            "csv_processing_status": status,
-            "instructions": {
-                "setup": "1. Create tables using scripts/create_supabase_schema.sql",
-                "load_data": "2. Load sample data using scripts/sample_data_inserts.sql",
-                "process": "3. Call POST /api/csv/process to convert CSV data to workflows"
+            **status,
+            "migration_info": {
+                "type": "one_time_csv_to_supabase",
+                "purpose": "Migrate CSV workflow data to proper Agent Forge format",
+                "duplicate_prevention": "Enabled - prevents re-processing existing workflows",
+                "data_flow": "workflow_rows + workflow_blocks_rows → workflow + workflow_blocks"
             },
-            "endpoints": {
-                "process_csv": "POST /api/csv/process",
+            "api_endpoints": {
+                "run_migration": "POST /api/csv/process",
+                "force_rerun": "POST /api/csv/process?force_reprocess=true",
                 "check_status": "GET /api/csv/status",
-                "view_workflows": "GET /api/workflows (after processing)"
+                "view_results": "GET /api/workflows"
             }
         }
         
     except Exception as e:
-        logger.error(f"Error getting CSV status: {e}")
+        logger.error(f"Error getting CSV migration status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/csv/reset")
+async def reset_migration():
+    """
+    ADMIN ENDPOINT: Reset migration state for testing
+    
+    WARNING: This will clear output tables to allow re-migration
+    Use only for development/testing purposes
+    """
+    try:
+        if csv_processor.db.use_database:
+            # Clear output tables
+            csv_processor.db.client.table("workflow_blocks").delete().neq("id", "").execute()
+            csv_processor.db.client.table("workflow").delete().neq("id", "").execute()
+            
+            return {
+                "message": "Migration state reset - output tables cleared",
+                "status": "reset_complete",
+                "next_steps": "Run POST /api/csv/process to re-migrate data",
+                "warning": "This action cleared all migrated workflow data"
+            }
+        else:
+            # Clear mock data
+            csv_processor.db.mock_workflows.clear()
+            csv_processor.db.mock_blocks.clear()
+            
+            return {
+                "message": "Migration state reset - mock data cleared",
+                "status": "reset_complete",
+                "next_steps": "Run POST /api/csv/process to re-migrate data"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error resetting migration: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/workflows")

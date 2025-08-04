@@ -1,41 +1,81 @@
 """
-CSV Processor Service
-Processes workflow_rows and workflow_blocks_rows data into proper Supabase tables
+CSV Processor Service - One-Time Migration
+Processes workflow_rows and workflow_blocks_rows (CSV INPUT) into proper Supabase tables (OUTPUT)
+WITH DUPLICATE PREVENTION
 """
 import json
 import uuid
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from src.utils.database_hybrid import db_service
 
 logger = logging.getLogger(__name__)
 
 class CSVProcessor:
-    """Process CSV data into proper workflow state format"""
+    """One-time CSV migration processor with duplicate prevention"""
     
     def __init__(self):
         self.db = db_service
+        self.processed_workflow_ids: Set[str] = set()
+        self.processed_block_ids: Set[str] = set()
     
-    async def process_workflows_from_csv(self) -> List[Dict[str, Any]]:
+    async def process_workflows_from_csv(self, force_reprocess: bool = False) -> List[Dict[str, Any]]:
         """
-        Main processing function:
-        1. Read from workflow_rows and workflow_blocks_rows
-        2. Generate proper state JSON
-        3. Store in public.workflow and public.workflow_blocks
+        ONE-TIME MIGRATION: Process CSV input → Supabase output tables
+        
+        Args:
+            force_reprocess: If True, will reprocess even if already exists (for testing)
+        
+        Returns:
+            List of successfully processed workflows
         """
         try:
-            # Get raw data from CSV tables
+            logger.info("🚀 Starting ONE-TIME CSV migration process...")
+            
+            # Check if migration already completed
+            if not force_reprocess and await self._is_migration_completed():
+                return {
+                    "message": "CSV migration already completed",
+                    "status": "already_processed",
+                    "suggestion": "Use force_reprocess=true to rerun migration",
+                    "existing_workflows": await self._get_existing_workflow_count()
+                }
+            
+            # Get CSV input data
             workflow_rows = await self._get_workflow_rows()
             workflow_blocks_rows = await self._get_workflow_blocks_rows()
             
+            if not workflow_rows:
+                return {
+                    "message": "No CSV input data found",
+                    "status": "no_input_data",
+                    "suggestion": "Ensure workflow_rows table contains data"
+                }
+            
+            # Load existing data to prevent duplicates
+            await self._load_existing_ids()
+            
             processed_workflows = []
+            skipped_workflows = []
             
             for workflow_row in workflow_rows:
+                workflow_id = workflow_row['id']
+                
+                # Skip if already processed (duplicate prevention)
+                if workflow_id in self.processed_workflow_ids and not force_reprocess:
+                    skipped_workflows.append({
+                        "id": workflow_id,
+                        "name": workflow_row['name'],
+                        "reason": "already_exists"
+                    })
+                    logger.info(f"⏭️  Skipping duplicate workflow: {workflow_row['name']}")
+                    continue
+                
                 # Get blocks for this workflow
                 workflow_blocks = [
                     block for block in workflow_blocks_rows 
-                    if block['workflow_id'] == workflow_row['id']
+                    if block['workflow_id'] == workflow_id
                 ]
                 
                 # Generate state JSON from blocks
@@ -44,20 +84,116 @@ class CSVProcessor:
                 # Create final workflow data
                 workflow_data = self._create_workflow_data(workflow_row, state_json)
                 
-                # Store in proper Supabase tables
-                stored_workflow = await self._store_workflow(workflow_data, workflow_blocks)
+                # Store in output tables with duplicate prevention
+                stored_workflow = await self._store_workflow_with_duplicate_check(
+                    workflow_data, workflow_blocks, force_reprocess
+                )
                 
                 if stored_workflow:
                     processed_workflows.append(stored_workflow)
-                    logger.info(f"✅ Processed workflow: {workflow_row['name']}")
+                    self.processed_workflow_ids.add(workflow_id)
+                    logger.info(f"✅ Migrated workflow: {workflow_row['name']}")
                 else:
-                    logger.error(f"❌ Failed to store workflow: {workflow_row['name']}")
+                    logger.error(f"❌ Failed to migrate workflow: {workflow_row['name']}")
             
-            return processed_workflows
+            # Create migration summary
+            migration_result = {
+                "message": f"CSV migration completed",
+                "status": "success",
+                "processed_count": len(processed_workflows),
+                "skipped_count": len(skipped_workflows),
+                "total_input_workflows": len(workflow_rows),
+                "processed_workflows": [
+                    {
+                        "id": w["id"],
+                        "name": w["name"],
+                        "description": w.get("description"),
+                        "block_count": len(w["state"]["blocks"]),
+                        "edge_count": len(w["state"]["edges"])
+                    }
+                    for w in processed_workflows
+                ],
+                "skipped_workflows": skipped_workflows,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "migration_type": "one_time_csv_to_supabase"
+            }
+            
+            # Mark migration as completed
+            await self._mark_migration_completed(migration_result)
+            
+            return migration_result
             
         except Exception as e:
-            logger.error(f"Error processing workflows from CSV: {e}")
-            return []
+            logger.error(f"Error in CSV migration process: {e}")
+            return {
+                "message": "CSV migration failed",
+                "status": "error",
+                "error": str(e),
+                "processed_count": len(getattr(self, 'processed_workflows', [])),
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+    
+    async def _is_migration_completed(self) -> bool:
+        """Check if CSV migration was already completed"""
+        try:
+            if self.db.use_database:
+                # Check for migration marker in database
+                response = self.db.client.table("workflow").select("id", count="exact").execute()
+                existing_count = response.count or 0
+                
+                # If we have workflows in output table, migration likely completed
+                if existing_count > 0:
+                    logger.info(f"Found {existing_count} existing workflows in output table")
+                    return True
+                    
+            else:
+                # Check mock data
+                if len(self.db.mock_workflows) > 0:
+                    logger.info(f"Found {len(self.db.mock_workflows)} existing workflows in mock data")
+                    return True
+                    
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Could not check migration status: {e}")
+            return False
+    
+    async def _load_existing_ids(self) -> None:
+        """Load existing workflow and block IDs to prevent duplicates"""
+        try:
+            if self.db.use_database:
+                # Load existing workflow IDs
+                workflow_response = self.db.client.table("workflow").select("id").execute()
+                self.processed_workflow_ids = {w["id"] for w in (workflow_response.data or [])}
+                
+                # Load existing block IDs  
+                blocks_response = self.db.client.table("workflow_blocks").select("id").execute()
+                self.processed_block_ids = {b["id"] for b in (blocks_response.data or [])}
+                
+            else:
+                # Load from mock data
+                self.processed_workflow_ids = set(self.db.mock_workflows.keys())
+                self.processed_block_ids = set()
+                for blocks in self.db.mock_blocks.values():
+                    self.processed_block_ids.update(block["id"] for block in blocks)
+            
+            logger.info(f"Loaded {len(self.processed_workflow_ids)} existing workflows, {len(self.processed_block_ids)} existing blocks")
+            
+        except Exception as e:
+            logger.warning(f"Could not load existing IDs: {e}")
+            self.processed_workflow_ids = set()
+            self.processed_block_ids = set()
+    
+    async def _get_existing_workflow_count(self) -> int:
+        """Get count of existing workflows in output table"""
+        try:
+            if self.db.use_database:
+                response = self.db.client.table("workflow").select("id", count="exact").execute()
+                return response.count or 0
+            else:
+                return len(self.db.mock_workflows)
+        except:
+            return 0
     
     async def _get_workflow_rows(self) -> List[Dict[str, Any]]:
         """Get data from workflow_rows table (CSV source)"""
@@ -329,10 +465,17 @@ class CSVProcessor:
             'marketplace_data': None
         }
     
-    async def _store_workflow(self, workflow_data: Dict[str, Any], workflow_blocks: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        """Store workflow and blocks in proper Supabase tables"""
+    async def _store_workflow_with_duplicate_check(
+        self, 
+        workflow_data: Dict[str, Any], 
+        workflow_blocks: List[Dict[str, Any]], 
+        force_reprocess: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """Store workflow and blocks with duplicate prevention"""
         try:
-            # Store workflow in public.workflow table
+            workflow_id = workflow_data['id']
+            
+            # Store workflow in output table
             if self.db.use_database:
                 # Prepare workflow data for database
                 db_workflow_data = workflow_data.copy()
@@ -345,14 +488,29 @@ class CSVProcessor:
                     if isinstance(db_workflow_data[field], datetime):
                         db_workflow_data[field] = db_workflow_data[field].isoformat()
                 
-                # Insert workflow
-                workflow_response = self.db.client.table("workflow").upsert(db_workflow_data).execute()
+                # Use upsert for duplicate handling or insert for strict duplicate prevention
+                if force_reprocess:
+                    workflow_response = self.db.client.table("workflow").upsert(db_workflow_data).execute()
+                else:
+                    # Check if exists first
+                    existing = self.db.client.table("workflow").select("id").eq("id", workflow_id).execute()
+                    if existing.data:
+                        logger.warning(f"Workflow {workflow_id} already exists, skipping")
+                        return None
+                    workflow_response = self.db.client.table("workflow").insert(db_workflow_data).execute()
                 
-                # Prepare and insert blocks
-                db_blocks = []
+                # Prepare and store blocks with duplicate prevention
+                new_blocks = []
                 for block in workflow_blocks:
+                    block_id = block['id']
+                    
+                    # Skip if block already exists
+                    if block_id in self.processed_block_ids and not force_reprocess:
+                        logger.info(f"Block {block_id} already exists, skipping")
+                        continue
+                    
                     db_block = {
-                        'id': block['id'],
+                        'id': block_id,
                         'workflow_id': block['workflow_id'],
                         'type': block['type'],
                         'name': block['name'],
@@ -371,55 +529,105 @@ class CSVProcessor:
                         'created_at': datetime.utcnow().isoformat(),
                         'updated_at': datetime.utcnow().isoformat()
                     }
-                    db_blocks.append(db_block)
+                    new_blocks.append(db_block)
+                    self.processed_block_ids.add(block_id)
                 
-                if db_blocks:
-                    blocks_response = self.db.client.table("workflow_blocks").upsert(db_blocks).execute()
+                if new_blocks:
+                    if force_reprocess:
+                        blocks_response = self.db.client.table("workflow_blocks").upsert(new_blocks).execute()
+                    else:
+                        blocks_response = self.db.client.table("workflow_blocks").insert(new_blocks).execute()
                 
-                logger.info(f"✅ Stored workflow {workflow_data['id']} with {len(db_blocks)} blocks in database")
+                logger.info(f"✅ Migrated workflow {workflow_id} with {len(new_blocks)} new blocks to OUTPUT tables")
                 return workflow_data
                 
             else:
-                # Store in mock data for development
-                self.db.mock_workflows[workflow_data['id']] = workflow_data
-                self.db.mock_blocks[workflow_data['id']] = workflow_blocks
-                logger.info(f"✅ Stored workflow {workflow_data['id']} in mock data")
-                return workflow_data
+                # Store in mock data with duplicate prevention
+                if workflow_id not in self.db.mock_workflows or force_reprocess:
+                    self.db.mock_workflows[workflow_id] = workflow_data
+                    self.db.mock_blocks[workflow_id] = workflow_blocks
+                    logger.info(f"✅ Migrated workflow {workflow_id} to mock OUTPUT data")
+                    return workflow_data
+                else:
+                    logger.info(f"Workflow {workflow_id} already exists in mock data, skipping")
+                    return None
                 
         except Exception as e:
-            logger.error(f"Error storing workflow {workflow_data['id']}: {e}")
+            logger.error(f"Error migrating workflow {workflow_data['id']}: {e}")
             return None
     
-    async def get_processing_status(self) -> Dict[str, Any]:
-        """Get status of CSV processing"""
+    async def _mark_migration_completed(self, migration_result: Dict[str, Any]) -> None:
+        """Mark migration as completed (optional metadata tracking)"""
         try:
+            migration_metadata = {
+                "migration_id": str(uuid.uuid4()),
+                "completed_at": datetime.utcnow().isoformat(),
+                "source": "csv_workflow_rows_and_blocks",
+                "destination": "supabase_workflow_and_blocks",
+                "result": migration_result
+            }
+            
+            # Could store in a migrations table if needed
+            logger.info(f"📋 Migration completed: {migration_metadata['migration_id']}")
+            
+        except Exception as e:
+            logger.warning(f"Could not mark migration as completed: {e}")
+    
+    async def get_migration_status(self) -> Dict[str, Any]:
+        """Get comprehensive migration status"""
+        try:
+            # Count input data
             workflow_rows = await self._get_workflow_rows()
             workflow_blocks_rows = await self._get_workflow_blocks_rows()
             
-            # Count processed workflows
-            processed_count = 0
+            # Count output data
+            output_workflows = 0
+            output_blocks = 0
+            
             if self.db.use_database:
                 try:
-                    response = self.db.client.table("workflow").select("id", count="exact").execute()
-                    processed_count = response.count or 0
+                    workflow_response = self.db.client.table("workflow").select("id", count="exact").execute()
+                    output_workflows = workflow_response.count or 0
+                    
+                    blocks_response = self.db.client.table("workflow_blocks").select("id", count="exact").execute()
+                    output_blocks = blocks_response.count or 0
                 except:
-                    processed_count = len(self.db.mock_workflows)
+                    output_workflows = len(self.db.mock_workflows)
+                    output_blocks = sum(len(blocks) for blocks in self.db.mock_blocks.values())
             else:
-                processed_count = len(self.db.mock_workflows)
+                output_workflows = len(self.db.mock_workflows)
+                output_blocks = sum(len(blocks) for blocks in self.db.mock_blocks.values())
+            
+            migration_completed = await self._is_migration_completed()
             
             return {
-                'csv_workflow_rows': len(workflow_rows),
-                'csv_workflow_blocks_rows': len(workflow_blocks_rows),
-                'processed_workflows': processed_count,
-                'database_type': 'supabase' if self.db.use_database else 'mock',
-                'processing_available': True
+                "migration_status": {
+                    "completed": migration_completed,
+                    "input_data": {
+                        "csv_workflow_rows": len(workflow_rows),
+                        "csv_workflow_blocks_rows": len(workflow_blocks_rows)
+                    },
+                    "output_data": {
+                        "supabase_workflows": output_workflows,
+                        "supabase_workflow_blocks": output_blocks
+                    },
+                    "migration_ratio": f"{output_workflows}/{len(workflow_rows)}" if workflow_rows else "0/0",
+                    "database_type": 'supabase' if self.db.use_database else 'mock'
+                },
+                "instructions": {
+                    "first_time": "POST /api/csv/process - Run one-time migration",
+                    "check_status": "GET /api/csv/status - Check migration progress", 
+                    "force_rerun": "POST /api/csv/process?force_reprocess=true - Rerun migration",
+                    "view_results": "GET /api/workflows - View migrated workflows"
+                },
+                "data_flow": "CSV Input (workflow_rows, workflow_blocks_rows) → API Processing → Supabase Output (workflow, workflow_blocks)"
             }
             
         except Exception as e:
-            logger.error(f"Error getting processing status: {e}")
+            logger.error(f"Error getting migration status: {e}")
             return {
-                'error': str(e),
-                'processing_available': False
+                "error": str(e),
+                "migration_available": False
             }
 
 # Global instance

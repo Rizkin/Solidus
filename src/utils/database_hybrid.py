@@ -257,34 +257,53 @@ class DatabaseService:
             return True
     
     async def list_workflows(self, user_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
-        """List workflows"""
-        if self.use_database:
-            try:
-                query = self.client.table("workflows").select("*").limit(limit)
+        """List workflows from output tables (after CSV migration)"""
+        try:
+            if self.use_database:
+                query = self.client.table("workflow").select("*")
+                
                 if user_id:
                     query = query.eq("user_id", user_id)
-                
+                    
+                query = query.limit(limit)
                 response = query.execute()
+                
                 workflows = response.data or []
                 
-                # Parse state for each workflow
+                # Parse JSON fields back to objects
                 for workflow in workflows:
-                    if isinstance(workflow.get("state"), str):
+                    if isinstance(workflow.get('state'), str):
                         try:
-                            workflow["state"] = json.loads(workflow["state"])
-                        except json.JSONDecodeError:
-                            pass
+                            workflow['state'] = json.loads(workflow['state'])
+                        except:
+                            workflow['state'] = {}
+                    
+                    if isinstance(workflow.get('variables'), str):
+                        try:
+                            workflow['variables'] = json.loads(workflow['variables'])
+                        except:
+                            workflow['variables'] = {}
+                    
+                    if isinstance(workflow.get('collaborators'), str):
+                        try:
+                            workflow['collaborators'] = json.loads(workflow['collaborators'])
+                        except:
+                            workflow['collaborators'] = []
                 
                 return workflows
-            except Exception as e:
-                logger.error(f"Database error: {e}")
-                return list(self.mock_workflows.values())
-        else:
-            # Mock data
-            workflows = list(self.mock_workflows.values())
-            if user_id:
-                workflows = [w for w in workflows if w.get("user_id") == user_id]
-            return workflows[:limit]
+                
+            else:
+                # Return mock data
+                workflows = list(self.mock_workflows.values())
+                
+                if user_id:
+                    workflows = [w for w in workflows if w.get('user_id') == user_id]
+                
+                return workflows[:limit]
+                
+        except Exception as e:
+            logger.error(f"Error listing workflows: {e}")
+            return []
     
     async def delete_workflow(self, workflow_id: str) -> bool:
         """Delete a workflow"""
