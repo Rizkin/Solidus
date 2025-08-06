@@ -1,0 +1,287 @@
+# Cursor Rules - Development Behavior Guidelines
+
+## Core Development Philosophy
+Follow systematic practices emphasizing error prevention, feature traceability, iterative improvement, and quality assurance. Every action must be traceable, every error a learning opportunity, and every feature thoroughly documented and tested. Align all behaviors with the project scope: building a robust backend AI agent for workflow state generation, PostgreSQL integration, JSON mapping, error handling, containerization, and deployment considerations.
+
+## Error Management Behavior
+### Always Implement Comprehensive Error Tracking
+For every error:
+1. **Capture**: Log with full context (e.g., stack trace, input data, database query).
+2. **Analyze**: Query knowledge base for similar resolved errors.
+3. **Solve**: Apply known solutions or implement/document new ones.
+4. **Learn**: Update knowledge base with prevention strategies.
+
+```python
+# Standardized error handling pattern
+import logging
+from error_knowledge_base import check_previous_solutions, log_new_error, apply_known_solution
+
+logger = logging.getLogger(__name__)
+
+try:
+    result = perform_operation()
+except Exception as e:
+    logger.error(f"Error occurred: {e}", exc_info=True)
+    similar_solutions = check_previous_solutions(str(e))
+    
+    if similar_solutions:
+        apply_known_solution(similar_solutions[0])
+    else:
+        log_new_error(
+            error_type=type(e).__name__,
+            message=str(e),
+            context=current_context(),  # Include DB state, JSON input, etc.
+            steps_to_reproduce=generate_repro_steps(),
+            attempted_solutions=[],
+            solution_implemented=None,
+            prevention_strategy=None,
+            resolved=False
+        )
+    
+    raise  # Propagate for higher-level handling
+```
+
+### Error Documentation Format
+Document each error in a knowledge base entry:
+- **Error Type/Message**: Exact details.
+- **Context**: Operation (e.g., DB query, JSON generation), inputs/outputs.
+- **Steps to Reproduce**: Minimal reproduction script.
+- **Solution Implemented**: Code changes/fixes.
+- **Prevention Strategy**: Added validations, tests, or refactors.
+
+## Feature Development Tracking
+### Feature Lifecycle Management
+Track features through:
+1. **Planned**: Define requirements, acceptance criteria (e.g., valid JSON state generation).
+2. **In Development**: Log progress, blockers (e.g., DB schema mismatches).
+3. **Testing**: Record coverage/results (e.g., unit tests for block mapping).
+4. **Deployed**: Note deployment details/metrics.
+5. **Monitoring**: Track runtime performance (e.g., query latency).
+
+### Feature Documentation Pattern
+```markdown
+## Feature: [Name, e.g., AI Agent JSON Mapping]
+- Status: [Planned|In Development|Testing|Deployed|Monitoring]
+- Description: [e.g., Maps DB rows to workflow state JSON with block properties.]
+- Acceptance Criteria: [e.g., Generates valid state for starter block; handles subBlocks dynamically.]
+- Dependencies: [e.g., PostgreSQL connection, schema alignment.]
+- Impact: [e.g., Affects state persistence and agent extensibility.]
+- Metrics: [e.g., Generation time < 500ms, 100% test coverage.]
+```
+
+## Code Quality Behaviors
+### Before Writing Code
+1. Search for existing similar code (e.g., DB query patterns).
+2. Review error logs for related issues (e.g., JSON parsing errors).
+3. Validate requirements completeness (e.g., block types supported).
+4. Plan error handling (e.g., for missing DB records).
+
+### While Writing Code
+1. Implement layered error handling (e.g., DB connection failures).
+2. Add logging at key points (e.g., before/after queries).
+3. Use self-documenting code with type hints/docstrings.
+4. Follow project-specific patterns (e.g., JSON schema validation for state).
+
+### After Writing Code
+1. Test edges/errors (e.g., invalid block types, empty DB results).
+2. Document new error patterns.
+3. Update feature status.
+4. Assess performance (e.g., query optimization).
+
+## Validation First Approach
+### Multi-Layer Validation
+Validate at:
+1. **Input**: Sanitize DB queries/JSON inputs (e.g., parameterized SQL).
+2. **Business Logic**: Ensure mappings align with schema (e.g., block positions valid).
+3. **Output**: Verify generated state JSON (e.g., schema compliance).
+4. **Integration**: Confirm DB read/write (e.g., state persistence).
+
+```python
+def generate_workflow_state(workflow_id: str) -> dict:
+    # Layer 1: Input validation
+    if not is_valid_workflow_id(workflow_id):
+        raise ValueError("Invalid workflow ID")
+    
+    # Layer 2: Business logic validation
+    data = fetch_db_data(workflow_id)
+    if not business_rules_satisfied(data):  # e.g., Required blocks present
+        raise BusinessRuleViolation("Workflow data incomplete")
+    
+    # Layer 3: Process with error handling
+    state = map_to_state_json(data)
+    
+    # Layer 4: Output validation
+    validate_state_json(state)  # Use JSON schema validator
+    
+    return state
+```
+
+## Testing Discipline
+### Test Coverage Requirements
+- **Unit**: All functions (e.g., block mapping) with scenarios (nominal, edge, error).
+- **Integration**: DB interactions (e.g., mock PostgreSQL for state generation/persistence).
+- **Error**: Explicit failure tests (e.g., missing records, invalid types).
+- **Performance**: Benchmark critical paths (e.g., large workflows).
+
+### Test-Driven Behavior
+1. Write tests first (expected/error cases).
+2. Implement minimal passing code.
+3. Refactor.
+4. Document edges (e.g., dynamic subBlocks).
+
+## Performance Consciousness
+### Optimization Priorities
+1. Ensure correctness (e.g., accurate state generation).
+2. Profile bottlenecks (e.g., DB queries via EXPLAIN).
+3. Cache reusable data (e.g., workflow metadata).
+4. Batch DB operations (e.g., single query for blocks/rows).
+5. Use async for I/O (e.g., DB connections if applicable).
+
+### Performance Tracking
+```python
+import time
+from performance_logger import log_performance_issue
+
+start = time.time()
+result = fetch_and_map_data()
+duration = time.time() - start
+
+if duration > 0.5:  # Threshold in seconds
+    log_performance_issue(
+        operation="state_generation",
+        duration=duration,
+        context={"workflow_size": len(result.get('blocks', []))}
+    )
+```
+
+## Security Mindset
+### Security Checklist for Every Feature
+- [ ] Input validation (e.g., escape SQL inputs).
+- [ ] SQL injection prevention (parameterized queries).
+- [ ] Sensitive data handling (e.g., no logging user_ids).
+- [ ] Auth/authorization (e.g., workspace_id checks).
+- [ ] Rate limiting (e.g., on state generation).
+- [ ] Error messages non-revealing (e.g., generic "DB error").
+
+### Secure Coding Patterns
+```python
+import psycopg2
+
+def fetch_data(workflow_id: str):
+    with psycopg2.connect(DB_URL) as conn:
+        with conn.cursor() as cur:
+            # Parameterized to prevent injection
+            cur.execute("SELECT * FROM workflow_rows WHERE id = %s", (workflow_id,))
+            return cur.fetchall()
+```
+
+## Documentation Discipline
+### Self-Documenting Code
+```python
+def map_block_to_json(block_row: dict) -> dict:
+    """
+    Maps a workflow_blocks_rows entry to state block JSON.
+    
+    Args:
+        block_row: Dict from DB row.
+    
+    Returns:
+        Dict with id, type, name, position, etc.
+    
+    Raises:
+        ValidationError: If row missing required fields.
+    """
+    if 'id' not in block_row:
+        raise ValidationError("Missing block ID")
+    
+    return {
+        'id': block_row['id'],
+        'type': block_row['type'],
+        # ... other mappings with defaults
+    }
+```
+
+### Documentation Updates
+Update on changes:
+1. Docstrings.
+2. README (e.g., new usage for AI logic).
+3. API docs (if endpoints added).
+4. Error docs.
+5. Feature tracking.
+
+## Debugging Methodology
+### Systematic Process
+1. **Reproduce**: Consistently (e.g., with sample SQL inserts).
+2. **Isolate**: Minimal case (e.g., single block mapping).
+3. **Hypothesize/Test**: Theories systematically.
+4. **Fix/Verify**: Minimal fix, re-test all.
+5. **Document**: In knowledge base.
+
+### Debug Logging Pattern
+```python
+logger.debug(f"Querying DB for workflow_id: {workflow_id}")
+try:
+    data = fetch_data(workflow_id)
+    logger.debug(f"Fetched {len(data)} rows")
+except Exception as e:
+    logger.error(f"DB fetch failed: {e}", exc_info=True)
+    raise
+```
+
+## Continuous Improvement
+### After Each Task
+1. **Review**: What succeeded/failed?
+2. **Document**: Update knowledge base.
+3. **Refactor**: Based on learnings (e.g., optimize mappings).
+4. **Share**: Update README/team docs.
+
+### Knowledge Base Maintenance
+- Solved problems/patterns.
+- Anti-patterns (e.g., unvalidated JSON).
+- Benchmarks (e.g., state gen time).
+- Error solutions.
+
+## Communication Patterns
+### Status Reporting
+Include: Current status, completed/pending items, blockers, next steps.
+
+### Problem Reporting
+Describe: Expected vs. actual, tried fixes, solutions, impact/urgency.
+
+## Quality Gates
+### Before Marking Complete
+- [ ] 100% tests passing (>80% coverage).
+- [ ] Comprehensive error handling.
+- [ ] Docs updated.
+- [ ] Performance meets thresholds.
+- [ ] Security reviewed.
+- [ ] Feature tracking updated.
+
+### Code Review Readiness
+- [ ] Self-reviewed.
+- [ ] No debug remnants.
+- [ ] Comments on "why".
+- [ ] No duplication.
+- [ ] Aligns with patterns.
+
+## Anti-Patterns to Avoid
+1. Silent failures.
+2. Magic numbers (use constants, e.g., DEFAULT_COLOR = '#3972F6').
+3. Deep nesting (extract methods).
+4. Duplication (e.g., reuse mapping logic).
+5. Missing handling (assume DB/network failures).
+6. Undocumented assumptions (e.g., block types).
+7. Untested edges (e.g., empty subBlocks).
+8. Premature optimization.
+9. Obscure security.
+10. Silos (document all).
+
+## Decision Making Framework
+1. Define problem.
+2. List/evaluate solutions (trade-offs, e.g., AI vs. rule-based mapping).
+3. Consider future (e.g., extensible for new block types).
+4. Choose simplest.
+5. Document rationale.
+
+## Summary Behaviors
+Prioritize: Error prevention via tracking, feature lifecycle, multi-layer validation/testing, measured optimization, security-first, thorough documentation, clear communication. Ensure code is robust, maintainable, and project-aligned (e.g., accurate workflow state generation from DB).
