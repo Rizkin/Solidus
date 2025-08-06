@@ -1,15 +1,29 @@
 """
-Ultra-minimal Vercel function - no FastAPI, just basic HTTP
-Testing if the Python runtime itself works
+Vercel ASGI app - correct format for Python on Vercel
 """
+from fastapi import FastAPI
 
-def handler(request):
-    """Ultra simple Vercel handler"""
+# Create the FastAPI app
+app = FastAPI(
+    title="Agent Forge Test",
+    version="1.0.0"
+)
+
+@app.get("/")
+@app.get("/api/health")
+async def health():
     return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        'body': '{"message": "Ultra minimal handler working", "status": "success", "test": "basic python function"}'
+        "status": "healthy", 
+        "message": "ASGI format test",
+        "deployment": "vercel-python"
     }
+
+@app.get("/api/templates")
+async def templates():
+    return {
+        "templates": {"test": "working"},
+        "message": "Templates endpoint test"
+    }
+
+# This is the correct export for Vercel ASGI
+app = app
