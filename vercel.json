@@ -2,10 +2,6 @@
   "version": 2,
   "routes": [
     {
-      "src": "/(docs|redoc|openapi\\.json)",
-      "dest": "api/app.py"
-    },
-    {
       "src": "/demo",
       "dest": "api/demo.py"
     },
@@ -20,22 +16,6 @@
     {
       "src": "/minimal",
       "dest": "api/minimal.py"
-    },
-    {
-      "src": "/generate-state",
-      "dest": "api/app.py"
-    },
-    {
-      "src": "/api/workflows/(.*)",
-      "dest": "api/app.py"
-    },
-    {
-      "src": "/api/health",
-      "dest": "api/app.py"
-    },
-    {
-      "src": "/api/templates",
-      "dest": "api/app.py"
     },
     {
       "src": "/api/(.*)",
@@ -55,11 +35,11 @@
     },
     {
       "src": "/(.*)",
-      "dest": "api/app.py"
+      "dest": "api/demo.py"
     }
   ],
   "functions": {
-    "api/app.py": {
+    "api/demo.py": {
       "maxDuration": 30
     },
     "api/test.py": {
@@ -69,9 +49,6 @@
       "maxDuration": 30
     },
     "api/minimal.py": {
-      "maxDuration": 30
-    },
-    "api/demo.py": {
       "maxDuration": 30
     },
     "api/index.py": {
