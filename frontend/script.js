@@ -42,7 +42,7 @@ let templates = {};
 let workflows = [];
 let analytics = {};
 let selectedTemplate = null;
-let useMockData = true; // Enable mock mode
+let useMockData = false; // Disable mock mode - API is working!
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {

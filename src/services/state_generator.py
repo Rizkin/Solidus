@@ -837,6 +837,141 @@ Return only valid JSON.
         
         return state
     
+    async def generate_workflow_state_from_data(
+        self, 
+        workflow_data: Dict[str, Any], 
+        blocks_data: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Generate workflow state from provided data (for demo endpoint)
+        
+        Args:
+            workflow_data: Dictionary containing workflow_rows data
+            blocks_data: List of dictionaries containing workflow_blocks_rows data
+            
+        Returns:
+            Complete workflow state JSON
+        """
+        logger.info(f"🎯 Generating state from provided data for workflow: {workflow_data.get('id')}")
+        start_time = time.time()
+        session_id = str(uuid.uuid4())
+        
+        try:
+            # Convert blocks_data to the expected format
+            blocks = []
+            for block in blocks_data:
+                blocks.append({
+                    'id': block['id'],
+                    'workflow_id': block['workflow_id'],
+                    'type': block['type'],
+                    'name': block['name'],
+                    'position_x': float(block['position_x']),
+                    'position_y': float(block['position_y']),
+                    'enabled': block.get('enabled', True),
+                    'horizontal_handles': block.get('horizontal_handles', True),
+                    'is_wide': block.get('is_wide', False),
+                    'advanced_mode': block.get('advanced_mode', False),
+                    'height': float(block.get('height', 0)),
+                    'sub_blocks': block.get('sub_blocks', {}),
+                    'outputs': block.get('outputs', {}),
+                    'data': block.get('data', {}),
+                    'parent_id': block.get('parent_id'),
+                    'extent': block.get('extent'),
+                    'created_at': block.get('created_at'),
+                    'updated_at': block.get('updated_at')
+                })
+            
+            logger.info(f"Processing {len(blocks)} blocks for demo state generation")
+            
+            # Prepare input data for caching system
+            input_data = {
+                'workflow_id': workflow_data['id'],
+                'workflow_type': self._determine_workflow_type(workflow_data, blocks),
+                'name': workflow_data.get('name', ''),
+                'description': workflow_data.get('description', ''),
+                'blocks': blocks,
+                'edges': self._infer_edges_from_positions(blocks),
+                'variables': json.loads(workflow_data.get('variables', '{}')) if isinstance(workflow_data.get('variables'), str) else workflow_data.get('variables', {})
+            }
+            
+            # Check if we have full services available
+            try:
+                # Create temp record for tracking
+                temp_id = await self.lookup_service.create_temp_record(session_id, input_data)
+                
+                # Check lookup table for similar workflows (hybrid search)
+                logger.info("🔍 Checking cache for similar workflows (hybrid search)...")
+                cached_result = await self.lookup_service.find_similar_workflows_hybrid(input_data)
+                
+                if cached_result:
+                    logger.info(f"✅ Cache hit! Using cached result with {cached_result['confidence_score']:.2f} confidence")
+                    
+                    # Update temp record
+                    await self.lookup_service.update_temp_record(
+                        temp_id, 
+                        cached_result['generated_state'], 
+                        cached_result['lookup_id'], 
+                        cached_result['confidence_score'], 
+                        "completed"
+                    )
+                    
+                    # Update usage stats
+                    await self.lookup_service.increment_usage_count(cached_result['lookup_id'])
+                    
+                    # Enhance the cached result with current workflow metadata
+                    enhanced_state = self._enhance_generated_state(cached_result['generated_state'], workflow_data['id'])
+                    enhanced_state['metadata']['workflow_name'] = workflow_data.get('name', '')
+                    enhanced_state['metadata']['workflow_description'] = workflow_data.get('description', '')
+                    
+                    generation_time = time.time() - start_time
+                    logger.info(f"⚡ State generated from cache in {generation_time:.2f}s")
+                    
+                    return enhanced_state
+                
+                # Generate new state
+                logger.info("🆕 No cache hit, generating new state...")
+                
+                if self.use_ai:
+                    # Use AI generation
+                    generated_state = await self._generate_state_with_ai(input_data)
+                else:
+                    # Use rule-based generation
+                    generated_state = self._generate_state_rule_based(input_data)
+                
+                # Store in cache for future use
+                lookup_key = self.lookup_service.generate_lookup_key(input_data)
+                await self.lookup_service.store_workflow_pattern(
+                    lookup_key=lookup_key,
+                    input_pattern=input_data,
+                    workflow_type=input_data['workflow_type'],
+                    block_count=len(blocks),
+                    block_types=[b['type'] for b in blocks],
+                    generated_state=generated_state,
+                    confidence_score=1.0,
+                    semantic_description=f"Demo workflow: {workflow_data.get('name', 'Unknown')}"
+                )
+                
+                # Update temp record
+                await self.lookup_service.update_temp_record(temp_id, generated_state, None, 1.0, "completed")
+                
+            except Exception as lookup_error:
+                logger.warning(f"⚠️ Lookup service unavailable, using direct generation: {lookup_error}")
+                
+                # Direct rule-based generation as fallback
+                if self.use_ai:
+                    generated_state = await self._generate_state_with_ai(input_data)
+                else:
+                    generated_state = self._generate_state_rule_based(input_data)
+            
+            generation_time = time.time() - start_time
+            logger.info(f"✅ State generated successfully in {generation_time:.2f}s")
+            
+            return generated_state
+            
+        except Exception as e:
+            logger.error(f"❌ Error in generate_workflow_state_from_data: {str(e)}")
+            raise
+
     async def analyze_workflow_pattern(self, workflow_id: str, workflow_data: Optional[Dict] = None) -> str:
         """Analyze workflow pattern type"""
         try:
@@ -853,6 +988,7 @@ Return only valid JSON.
         except Exception as e:
             logger.error(f"Error analyzing workflow pattern: {e}")
             return "unknown"
+
 
 # Global instance
 state_generator = StateGenerator() 
