@@ -565,6 +565,93 @@ Testing maintains compatibility with all enterprise features:
 
 ## 🧪 **Testing & Validation**
 
+### **API Testing with curl/Postman**
+Test the MVP demo endpoints for technical interview:
+
+#### **Demo UI Testing**
+```bash
+# Access Demo UI in browser
+open https://solidus-olive.vercel.app/demo
+
+# Or test locally
+open http://localhost:8000/demo
+```
+
+#### **Generate State API Testing**
+```bash
+# Generate workflow state from sample data
+curl -X POST "https://solidus-olive.vercel.app/generate-state" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow_id": "demo-workflow-001",
+    "workflow_rows": {
+      "id": "demo-workflow-001",
+      "user_id": "demo-user-123",
+      "workspace_id": "demo-workspace-456",
+      "name": "Demo Trading Bot",
+      "description": "Automated crypto trading with risk management",
+      "color": "#3972F6",
+      "variables": "{}",
+      "is_published": false,
+      "created_at": "2024-01-01T10:00:00Z",
+      "updated_at": "2024-01-01T10:00:00Z",
+      "last_synced": "2024-01-01T10:00:00Z",
+      "state": "{}"
+    },
+    "blocks_rows": [
+      {
+        "id": "block-starter-001",
+        "workflow_id": "demo-workflow-001",
+        "type": "starter",
+        "name": "Start Trading",
+        "position_x": 100,
+        "position_y": 100,
+        "enabled": true,
+        "horizontal_handles": true,
+        "is_wide": false,
+        "advanced_mode": false,
+        "height": 0,
+        "sub_blocks": {"startWorkflow": {"id": "startWorkflow", "type": "dropdown", "value": "manual"}},
+        "outputs": {"response": {"type": {"input": "any"}}},
+        "data": {},
+        "parent_id": null,
+        "extent": null,
+        "created_at": "2024-01-01T10:00:00Z",
+        "updated_at": "2024-01-01T10:00:00Z"
+      },
+      {
+        "id": "block-api-001",
+        "workflow_id": "demo-workflow-001", 
+        "type": "api",
+        "name": "Fetch Market Data",
+        "position_x": 300,
+        "position_y": 100,
+        "enabled": true,
+        "horizontal_handles": true,
+        "is_wide": false,
+        "advanced_mode": false,
+        "height": 0,
+        "sub_blocks": {"url": {"id": "url", "type": "short-input", "value": "https://api.coingecko.com/api/v3/coins/bitcoin"}},
+        "outputs": {"data": "any", "status": "number"},
+        "data": {},
+        "parent_id": null,
+        "extent": null,
+        "created_at": "2024-01-01T10:00:00Z",
+        "updated_at": "2024-01-01T10:00:00Z"
+      }
+    ]
+  }'
+```
+
+#### **Health Check & Status**
+```bash
+# Check API health
+curl https://solidus-olive.vercel.app/api/health
+
+# Check root endpoint
+curl https://solidus-olive.vercel.app/
+```
+
 ### **Live Testing**
 All endpoints are live and fully functional:
 ```bash
@@ -582,6 +669,12 @@ curl -X POST https://solidus-olive.vercel.app/api/workflows/test-$(date +%s)/gen
 curl -X POST https://solidus-olive.vercel.app/api/workflows/semantic-search \
   -H "Content-Type: application/json" -d '{"query": "automate social media"}'
 ```
+
+### **Demo UI Usage**
+1. **Access Demo**: Visit [https://solidus-olive.vercel.app/demo](https://solidus-olive.vercel.app/demo)
+2. **Input Data**: Fill workflow_rows and workflow_blocks_rows forms
+3. **Generate**: Click "Generate Workflow State" to see JSON output
+4. **Examples**: Use "Load Example Data" for pre-filled trading bot workflow
 
 ## 🚀 **Deployment**
 
