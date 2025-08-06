@@ -7,11 +7,15 @@
     },
     {
       "src": "/demo",
-      "dest": "api/test.py"
+      "dest": "api/simple.py"
     },
     {
       "src": "/test",
       "dest": "api/test.py"
+    },
+    {
+      "src": "/simple",
+      "dest": "api/simple.py"
     },
     {
       "src": "/generate-state",
@@ -55,6 +59,9 @@
       "maxDuration": 30
     },
     "api/test.py": {
+      "maxDuration": 30
+    },
+    "api/simple.py": {
       "maxDuration": 30
     },
     "api/index.py": {
