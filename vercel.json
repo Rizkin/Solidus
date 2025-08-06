@@ -7,7 +7,7 @@
     },
     {
       "src": "/demo",
-      "dest": "api/minimal.py"
+      "dest": "api/demo.py"
     },
     {
       "src": "/test",
@@ -69,6 +69,9 @@
       "maxDuration": 30
     },
     "api/minimal.py": {
+      "maxDuration": 30
+    },
+    "api/demo.py": {
       "maxDuration": 30
     },
     "api/index.py": {
