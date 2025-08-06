@@ -1,2 +1,5 @@
-# Ultra-minimal - pure Python only
-# Testing Vercel Python runtime without any external dependencies
+# FastAPI requirements - now that Vercel configuration is fixed
+fastapi>=0.104.1,<0.105.0
+python-dotenv>=1.0.0,<2.0.0
+
+# Minimal but functional FastAPI setup for Vercel

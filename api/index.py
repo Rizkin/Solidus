@@ -1,51 +1,96 @@
 """
-Ultra-simple Vercel Python function for testing runtime
-No FastAPI - pure Python HTTP handler
+Agent Forge API - FastAPI Implementation
+Now that Vercel configuration is fixed, we can use proper FastAPI
 """
-from http.server import BaseHTTPRequestHandler
-import json
+from fastapi import FastAPI
+from datetime import datetime
+import os
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        path = self.path
-        
-        # Set response headers
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        
-        # Route responses based on path
-        if '/api/health' in path:
-            response = {
-                "status": "healthy",
-                "message": "Basic Python handler working!",
-                "deployment": "vercel-basic-handler",
-                "path": path
+# Create FastAPI app with proper docs configuration
+app = FastAPI(
+    title="Agent Forge API",
+    description="AI-powered workflow automation platform with professional templates",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
+@app.get("/api/")
+async def api_root():
+    """Simple API status - confirms API is functional"""
+    return {
+        "message": "Agent Forge API is fully functional! 🚀",
+        "status": "operational",
+        "version": "1.0.0",
+        "documentation": "/api/docs",
+        "endpoints": {
+            "health": "/api/health",
+            "templates": "/api/templates",
+            "docs": "/api/docs"
+        }
+    }
+
+@app.get("/")
+async def root():
+    """Root endpoint with redirect info"""
+    return {
+        "name": "Agent Forge API", 
+        "message": "API is working! Visit /api/docs for documentation",
+        "api_base": "/api/",
+        "documentation": "/api/docs",
+        "status": "ready"
+    }
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "service": "Agent Forge API",
+        "deployment": "vercel-fastapi",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "message": "All systems operational"
+    }
+
+@app.get("/api/templates")
+async def get_templates():
+    """Get available workflow templates"""
+    return {
+        "templates": {
+            "trading_bot": {
+                "name": "trading_bot",
+                "display_name": "Crypto Trading Bot", 
+                "description": "Automated trading with stop-loss and take-profit",
+                "category": "Web3 Trading",
+                "tags": ["trading", "crypto", "finance"],
+                "complexity": "Complex",
+                "customizable_fields": ["trading_pair", "stop_loss", "take_profit"]
+            },
+            "lead_generation": {
+                "name": "lead_generation", 
+                "display_name": "Lead Generation System",
+                "description": "Capture and qualify leads from multiple sources", 
+                "category": "Sales & Marketing",
+                "tags": ["sales", "marketing", "crm"],
+                "complexity": "Medium",
+                "customizable_fields": ["source", "crm_integration"]
+            },
+            "ai_research": {
+                "name": "ai_research",
+                "display_name": "AI Research Assistant",
+                "description": "Multi-agent research collaboration system",
+                "category": "AI Automation", 
+                "tags": ["research", "ai", "analysis"],
+                "complexity": "Complex",
+                "customizable_fields": ["research_topic", "depth_level"]
             }
-        elif '/api/templates' in path:
-            response = {
-                "templates": {
-                    "test": {
-                        "name": "test",
-                        "display_name": "Test Template", 
-                        "description": "Basic test template",
-                        "category": "Test"
-                    }
-                },
-                "message": "Basic templates working",
-                "handler": "pure-python"
-            }
-        else:
-            response = {
-                "name": "Agent Forge API",
-                "status": "basic-handler-working",
-                "message": "Ultra-simple Python function successful!",
-                "path": path
-            }
-        
-        # Send JSON response
-        self.wfile.write(json.dumps(response).encode())
-        
-    def do_POST(self):
-        self.do_GET()  # Handle POST same as GET for now
+        },
+        "total_count": 3,
+        "categories": ["Web3 Trading", "Sales & Marketing", "AI Automation"],
+        "message": "Professional workflow templates available",
+        "api_version": "1.0.0"
+    }
+
+# Export for Vercel
+handler = app
