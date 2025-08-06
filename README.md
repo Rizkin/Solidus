@@ -730,6 +730,140 @@ open https://solidus-olive.vercel.app/
 - **[Sample Data](/scripts/sample_data_inserts.sql)** - Example data inserts
 - **[Vercel Configuration](/vercel.json)** - Deployment configuration
 
+## 🧪 **API Testing & Usage**
+
+### **Quick API Testing with cURL**
+
+Test the live API endpoints with these examples:
+
+#### **1. Health Check**
+```bash
+curl "https://solidus-olive.vercel.app/api/health"
+```
+
+#### **2. Generate Workflow State (Demo)**
+```bash
+curl -X POST "https://solidus-olive.vercel.app/generate-state" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow_id": "demo-test-001",
+    "workflow_rows": {
+      "id": "demo-test-001",
+      "user_id": "test-user",
+      "workspace_id": "test-workspace",
+      "name": "API Test Workflow",
+      "description": "Testing API endpoint",
+      "color": "#3972F6",
+      "variables": "{}",
+      "is_published": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "last_synced": "2024-01-01T00:00:00Z",
+      "state": "{}"
+    },
+    "blocks_rows": [
+      {
+        "id": "block-starter-001",
+        "workflow_id": "demo-test-001",
+        "type": "starter",
+        "name": "Start Process",
+        "position_x": 100,
+        "position_y": 100,
+        "enabled": true,
+        "horizontal_handles": true,
+        "is_wide": false,
+        "advanced_mode": false,
+        "height": 0,
+        "sub_blocks": {},
+        "outputs": {},
+        "data": {},
+        "parent_id": null,
+        "extent": null,
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z"
+      }
+    ]
+  }'
+```
+
+#### **3. Semantic Search (requires OpenAI key)**
+```bash
+curl -X POST "https://solidus-olive.vercel.app/api/workflows/semantic-search" \
+  -H "Content-Type: application/json" \
+  -d '"Find a trading bot workflow"'
+```
+
+#### **4. Get Available Templates**
+```bash
+curl "https://solidus-olive.vercel.app/api/templates"
+```
+
+#### **5. Create from Template**
+```bash
+curl -X POST "https://solidus-olive.vercel.app/api/workflows/templates/trading_bot" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trading_pair": "BTC/USD",
+    "risk_level": "moderate"
+  }'
+```
+
+### **Local Development Testing**
+If running locally on `http://localhost:8000`:
+
+```bash
+# Health check
+curl "http://localhost:8000/api/health"
+
+# Demo UI access
+curl "http://localhost:8000/demo"
+
+# Generate state locally
+curl -X POST "http://localhost:8000/generate-state" \
+  -H "Content-Type: application/json" \
+  -d @example_payload.json
+```
+
+### **Response Examples**
+
+#### **Successful State Generation**
+```json
+{
+  "success": true,
+  "workflow_id": "demo-test-001",
+  "generated_state": {
+    "blocks": {
+      "block-starter-001": {
+        "id": "block-starter-001",
+        "type": "starter",
+        "name": "Start Process",
+        "position": { "x": 100, "y": 100 },
+        "enabled": true,
+        "subBlocks": {},
+        "outputs": {}
+      }
+    },
+    "edges": [],
+    "variables": {},
+    "metadata": {
+      "version": "1.0.0",
+      "createdAt": "2024-01-01T00:00:00Z"
+    }
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "errors": []
+  }
+}
+```
+
+### **Postman Collection**
+Import this collection for testing:
+- **Base URL**: `https://solidus-olive.vercel.app`
+- **Headers**: `Content-Type: application/json`
+- **Authentication**: None required for demo endpoints
+
 ## 🚀 **Future Improvements**
 
 ### **🤖 Advanced AI Capabilities**
