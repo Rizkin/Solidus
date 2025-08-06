@@ -1,11 +1,48 @@
-// Agent Forge Frontend JavaScript
+// Agent Forge Frontend JavaScript - MOCK VERSION FOR TESTING
 const API_BASE = 'https://solidus-olive.vercel.app/api';
+
+// Mock data for testing while API is down
+const MOCK_TEMPLATES = {
+    "lead_generation": {
+        "name": "lead_generation",
+        "display_name": "Lead Generation System",
+        "description": "Capture and qualify leads from multiple sources",
+        "category": "Sales & Marketing",
+        "tags": ["sales", "marketing", "crm"],
+        "complexity": "Medium",
+        "estimated_runtime": "24/7",
+        "customizable_fields": ["source", "crm_integration"]
+    },
+    "trading_bot": {
+        "name": "trading_bot", 
+        "display_name": "Crypto Trading Bot",
+        "description": "Automated trading with stop-loss and take-profit",
+        "category": "Web3 Trading",
+        "tags": ["trading", "crypto", "finance"],
+        "complexity": "Complex", 
+        "estimated_runtime": "24/7",
+        "customizable_fields": ["trading_pair", "stop_loss"]
+    },
+    "ai_research": {
+        "name": "ai_research",
+        "display_name": "AI Research Assistant", 
+        "description": "Multi-agent research collaboration system",
+        "category": "AI Automation",
+        "tags": ["research", "ai", "analysis"],
+        "complexity": "Complex",
+        "estimated_runtime": "On-demand",
+        "customizable_fields": ["research_topic", "depth_level"]
+    }
+};
+
+const MOCK_CATEGORIES = ["Sales & Marketing", "Web3 Trading", "AI Automation"];
 
 // Global state
 let templates = {};
 let workflows = [];
 let analytics = {};
 let selectedTemplate = null;
+let useMockData = true; // Enable mock mode
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -91,18 +128,28 @@ async function apiCall(endpoint, options = {}) {
 async function loadTemplates() {
     try {
         showLoading('templates-grid');
+        
+        if (useMockData) {
+            // Use mock data for testing
+            console.log("🧪 Using mock data - API is down");
+            templates = MOCK_TEMPLATES;
+            displayTemplates(templates);
+            setupCategoryFilter(MOCK_CATEGORIES);
+            showToast("🧪 Demo Mode: Using mock templates (API unavailable)", "info");
+            return;
+        }
+        
         const data = await apiCall('/templates');
         templates = data.templates;
         
         displayTemplates(templates);
         setupCategoryFilter(data.categories);
     } catch (error) {
-        document.getElementById('templates-grid').innerHTML = `
-            <div class="error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Failed to load templates</p>
-            </div>
-        `;
+        console.log("❌ API failed, falling back to mock data");
+        templates = MOCK_TEMPLATES;
+        displayTemplates(templates);
+        setupCategoryFilter(MOCK_CATEGORIES);
+        showToast("⚠️ API unavailable - showing demo templates", "error");
     }
 }
 
@@ -264,6 +311,15 @@ async function createWorkflowFromTemplate() {
     try {
         showLoadingButton('create-from-template', 'Creating...');
         
+        if (useMockData) {
+            // Mock workflow creation
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+            showToast(`🧪 Mock: Workflow "${template.display_name}" created successfully!`, 'success');
+            closeModal();
+            document.querySelector('[data-tab="workflows"]').click();
+            return;
+        }
+        
         const result = await apiCall(`/workflows/templates/${selectedTemplate}`, {
             method: 'POST',
             body: JSON.stringify(customization)
@@ -276,7 +332,9 @@ async function createWorkflowFromTemplate() {
         document.querySelector('[data-tab="workflows"]').click();
         
     } catch (error) {
-        showToast('Failed to create workflow: ' + error.message, 'error');
+        showToast('🧪 Mock: Workflow creation simulated (API unavailable)', 'error');
+        closeModal();
+        document.querySelector('[data-tab="workflows"]').click();
     } finally {
         resetButton('create-from-template', 'Create Workflow');
     }
@@ -365,17 +423,56 @@ async function generateState(workflowId) {
 async function loadAnalytics() {
     try {
         showLoading('analytics-grid');
+        
+        if (useMockData) {
+            // Mock analytics data
+            analytics = {
+                cache_statistics: {
+                    cache_hit_rate: "73.2%",
+                    total_patterns_cached: 156,
+                    average_time_saved: "2.4s",
+                    ai_calls_saved: 1247
+                },
+                system_info: {
+                    database_connected: false,
+                    rag_enhanced: false,
+                    openai_embeddings: false
+                },
+                performance_benefits: {
+                    speed_improvement: "5-10x faster",
+                    cost_reduction: "70-80% savings"
+                }
+            };
+            displayAnalytics(analytics);
+            showToast("🧪 Demo Mode: Mock analytics data", "info");
+            return;
+        }
+        
         const data = await apiCall('/workflows/cache/stats');
         analytics = data;
         
         displayAnalytics(analytics);
     } catch (error) {
-        document.getElementById('analytics-grid').innerHTML = `
-            <div class="error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Failed to load analytics</p>
-            </div>
-        `;
+        // Use mock data as fallback
+        analytics = {
+            cache_statistics: {
+                cache_hit_rate: "Demo Mode",
+                total_patterns_cached: "N/A",
+                average_time_saved: "N/A",
+                ai_calls_saved: "N/A"
+            },
+            system_info: {
+                database_connected: false,
+                rag_enhanced: false,
+                openai_embeddings: false
+            },
+            performance_benefits: {
+                speed_improvement: "API Unavailable",
+                cost_reduction: "Demo Mode"
+            }
+        };
+        displayAnalytics(analytics);
+        showToast("⚠️ Analytics unavailable - showing demo data", "error");
     }
 }
 
