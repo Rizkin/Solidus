@@ -7,7 +7,11 @@
     },
     {
       "src": "/demo",
-      "dest": "api/app.py"
+      "dest": "api/test.py"
+    },
+    {
+      "src": "/test",
+      "dest": "api/test.py"
     },
     {
       "src": "/generate-state",
@@ -48,6 +52,9 @@
   ],
   "functions": {
     "api/app.py": {
+      "maxDuration": 30
+    },
+    "api/test.py": {
       "maxDuration": 30
     },
     "api/index.py": {
