@@ -381,4 +381,8 @@ async def global_exception_handler(request, exc):
 # For local development
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Export the FastAPI app for Vercel
+# Vercel will automatically detect this as an ASGI app
+handler = app 

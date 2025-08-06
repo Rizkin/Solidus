@@ -2,11 +2,31 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
+      "src": "/(docs|redoc|openapi\\.json)",
+      "dest": "src/main.py"
     },
     {
-      "src": "/(docs|redoc|openapi\\.json)",
+      "src": "/demo",
+      "dest": "src/main.py"
+    },
+    {
+      "src": "/generate-state",
+      "dest": "src/main.py"
+    },
+    {
+      "src": "/api/workflows/(.*)",
+      "dest": "src/main.py"
+    },
+    {
+      "src": "/api/health",
+      "dest": "src/main.py"
+    },
+    {
+      "src": "/api/templates",
+      "dest": "src/main.py"
+    },
+    {
+      "src": "/api/(.*)",
       "dest": "api/index.py"
     },
     {
@@ -23,10 +43,13 @@
     },
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "src/main.py"
     }
   ],
   "functions": {
+    "src/main.py": {
+      "maxDuration": 30
+    },
     "api/index.py": {
       "maxDuration": 30
     }
