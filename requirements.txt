@@ -1,10 +1,2 @@
-# Minimal Vercel requirements - Essential dependencies only
-# Avoid complex dependency trees that cause conflicts
-
-fastapi>=0.104.1,<0.105.0
-pydantic>=2.5.0,<3.0.0
-python-dotenv>=1.0.0,<2.0.0
-
-# Only essential extras for basic functionality
-# Removed: supabase, anthropic, openai, sqlalchemy, asyncpg
-# These can be added back gradually once basic deployment works
+# Ultra-minimal - pure Python only
+# Testing Vercel Python runtime without any external dependencies
