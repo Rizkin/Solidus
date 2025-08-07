@@ -427,7 +427,7 @@ function removeBlock(button) {
     
     // Don't remove if it's the last block
     if (blocksContainer.children.length > 1) {
-        blockItem.remove();
+    blockItem.remove();
         
         // Renumber remaining blocks
         const remainingBlocks = blocksContainer.querySelectorAll('.block-item');
