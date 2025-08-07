@@ -31,7 +31,7 @@ class Workflow(Base):
     is_published = Column(Boolean, nullable=False, default=False)
     marketplace_data = Column(JSON, nullable=True)
     
-    # Relationship
+    # Relationship to blocks
     blocks = relationship("WorkflowBlock", back_populates="workflow", cascade="all, delete-orphan")
 
 class WorkflowBlock(Base):
@@ -51,10 +51,14 @@ class WorkflowBlock(Base):
     sub_blocks = Column(JSONB, nullable=False, default=lambda: {})
     outputs = Column(JSONB, nullable=False, default=lambda: {})
     data = Column(JSONB, nullable=True, default=lambda: {})
-    parent_id = Column(Text, nullable=True)
+    parent_id = Column(Text, ForeignKey('workflow_blocks.id'), nullable=True)
     extent = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationship
-    workflow = relationship("Workflow", back_populates="blocks") 
+    # Relationship to workflow
+    workflow = relationship("Workflow", back_populates="blocks")
+    
+    # Self-referential relationship for parent-child blocks
+    parent = relationship("WorkflowBlock", remote_side=[id], back_populates="children")
+    children = relationship("WorkflowBlock", back_populates="parent") 

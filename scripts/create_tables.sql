@@ -52,12 +52,24 @@ CREATE TABLE workflow_blocks (
     parent_id TEXT,
     extent TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT workflow_blocks_workflow_id_fk 
-        FOREIGN KEY (workflow_id) 
-        REFERENCES workflow(id) 
-        ON DELETE CASCADE
+    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+-- Add Foreign Key Constraints for Relationships
+
+-- Parent-Child: Workflow to Blocks
+ALTER TABLE workflow_blocks 
+ADD CONSTRAINT fk_workflow 
+FOREIGN KEY (workflow_id) 
+REFERENCES workflow(id) 
+ON DELETE CASCADE;
+
+-- Self-referential: Block Hierarchy
+ALTER TABLE workflow_blocks 
+ADD CONSTRAINT fk_parent_block 
+FOREIGN KEY (parent_id) 
+REFERENCES workflow_blocks(id) 
+ON DELETE SET NULL;
 
 -- Create indexes for performance
 CREATE INDEX idx_workflow_blocks_workflow_id ON workflow_blocks(workflow_id);
@@ -66,6 +78,10 @@ CREATE INDEX idx_workflow_blocks_parent_id ON workflow_blocks(parent_id);
 CREATE INDEX idx_workflow_user_id ON workflow(user_id);
 CREATE INDEX idx_workflow_workspace_id ON workflow(workspace_id);
 CREATE INDEX idx_workflow_is_published ON workflow(is_published);
+
+-- Create indexes for the required relationships
+CREATE INDEX idx_workflow_blocks_workflow_parent ON workflow_blocks(workflow_id, parent_id);
+CREATE INDEX idx_workflow_blocks_workflow_type ON workflow_blocks(workflow_id, type);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

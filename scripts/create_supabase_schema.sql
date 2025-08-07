@@ -4,7 +4,7 @@
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Create workflow table
+-- Create workflow table (Master workflow table)
 CREATE TABLE public.workflow (
     id text NOT NULL,
     user_id text NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE public.workflow (
     CONSTRAINT workflow_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 
--- Create workflow_blocks table
+-- Create workflow_blocks table (Workflow blocks detail table)
 CREATE TABLE public.workflow_blocks (
     id text NOT NULL,
     workflow_id text NOT NULL,
@@ -49,25 +49,26 @@ CREATE TABLE public.workflow_blocks (
     extent text NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now(),
     updated_at timestamp without time zone NOT NULL DEFAULT now(),
-    CONSTRAINT workflow_blocks_pkey PRIMARY KEY (id),
-    CONSTRAINT workflow_blocks_workflow_id_workflow_id_fk 
-        FOREIGN KEY (workflow_id) REFERENCES workflow(id) ON DELETE CASCADE
+    CONSTRAINT workflow_blocks_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 
--- Create indexes for workflow_blocks
-CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_id_idx 
-    ON public.workflow_blocks USING btree (workflow_id) TABLESPACE pg_default;
+-- Add Foreign Key Constraints for Relationships
 
-CREATE INDEX IF NOT EXISTS workflow_blocks_parent_id_idx 
-    ON public.workflow_blocks USING btree (parent_id) TABLESPACE pg_default;
+-- Parent-Child: Workflow to Blocks
+ALTER TABLE public.workflow_blocks 
+ADD CONSTRAINT fk_workflow 
+FOREIGN KEY (workflow_id) 
+REFERENCES public.workflow(id) 
+ON DELETE CASCADE;
 
-CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_parent_idx 
-    ON public.workflow_blocks USING btree (workflow_id, parent_id) TABLESPACE pg_default;
+-- Self-referential: Block Hierarchy
+ALTER TABLE public.workflow_blocks 
+ADD CONSTRAINT fk_parent_block 
+FOREIGN KEY (parent_id) 
+REFERENCES public.workflow_blocks(id) 
+ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS workflow_blocks_workflow_type_idx 
-    ON public.workflow_blocks USING btree (workflow_id, type) TABLESPACE pg_default;
-
--- Create workflow_rows table (CSV input)
+-- Create workflow_rows table (Guideline/input table - mirrors workflow structure)
 CREATE TABLE public.workflow_rows (
     id text NOT NULL,
     user_id text NOT NULL,
@@ -92,7 +93,7 @@ CREATE TABLE public.workflow_rows (
     CONSTRAINT workflow_rows_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 
--- Create workflow_blocks_rows table (CSV input)
+-- Create workflow_blocks_rows table (Guideline/input table - mirrors workflow_blocks)
 CREATE TABLE public.workflow_blocks_rows (
     id text NOT NULL,
     workflow_id text NOT NULL,
@@ -264,7 +265,19 @@ CREATE TABLE public.ai_usage_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for performance
+-- Create Indexes for Performance (as specified in the task)
+
+-- Parent-Child: Workflow to Blocks
+CREATE INDEX workflow_blocks_workflow_id_idx ON public.workflow_blocks(workflow_id);
+
+-- Self-referential: Block Hierarchy
+CREATE INDEX workflow_blocks_parent_id_idx ON public.workflow_blocks(parent_id);
+
+-- Composite indexes for performance
+CREATE INDEX workflow_blocks_workflow_parent_idx ON public.workflow_blocks(workflow_id, parent_id);
+CREATE INDEX workflow_blocks_workflow_type_idx ON public.workflow_blocks(workflow_id, type);
+
+-- Additional indexes for other tables
 CREATE INDEX IF NOT EXISTS idx_cache_stats_type ON cache_stats(cache_type);
 CREATE INDEX IF NOT EXISTS idx_cache_stats_period ON cache_stats(period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_provider ON ai_usage_logs(provider);
