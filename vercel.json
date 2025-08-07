@@ -1,11 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    {"src": "api/**/*.py", "use": "@vercel/python"}
-  ],
   "routes": [
-    {"src": "/frontend/(.*)", "dest": "/public/frontend/$1"},
-    {"src": "/frontend", "dest": "/public/frontend/index.html"},
+    {"src": "/api/(.*)", "dest": "/api/index.py"},
     {"src": "/(.*)", "dest": "/api/demo.py"}
   ]
 }
