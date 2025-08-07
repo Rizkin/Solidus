@@ -2,36 +2,11 @@
   "version": 2,
   "builds": [
     {"src": "api/**/*.py", "use": "@vercel/python"},
-    {"src": "frontend/**", "use": "@vercel/static"},
-    {"src": "public/**", "use": "@vercel/static"}
+    {"src": "frontend/**", "use": "@vercel/static"}
   ],
   "routes": [
-    {"src": "^/demo$", "dest": "/api/demo.py"},
-    {"src": "^/demo/$", "dest": "/api/demo.py"},
-    {"src": "^/test$", "dest": "/api/test.py"},
-    {"src": "^/simple$", "dest": "/api/simple.py"},
-    {"src": "^/minimal$", "dest": "/api/minimal.py"},
-    {"src": "^/api/(.*)$", "dest": "/api/index.py"},
-    {"src": "^/frontend/(.*)$", "dest": "/frontend/$1"},
-    {"src": "^/frontend$", "dest": "/frontend/index.html"},
-    {"src": "^/$", "dest": "/public/index.html"},
-    {"src": "^/(.*)$", "dest": "/api/demo.py"}
-  ],
-  "functions": {
-    "api/demo.py": {
-      "maxDuration": 30
-    },
-    "api/test.py": {
-      "maxDuration": 30
-    },
-    "api/simple.py": {
-      "maxDuration": 30
-    },
-    "api/minimal.py": {
-      "maxDuration": 30
-    },
-    "api/index.py": {
-      "maxDuration": 30
-    }
-  }
+    {"src": "/frontend/(.*)", "dest": "/frontend/$1"},
+    {"src": "/frontend", "dest": "/frontend/index.html"},
+    {"src": "/(.*)", "dest": "/api/demo.py"}
+  ]
 }
