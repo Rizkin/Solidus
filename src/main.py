@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import json
+import random
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -189,6 +190,140 @@ async def demo_ui():
             status_code=404
         )
 
+@app.get("/api/random-workflow")
+async def get_random_workflow():
+    """Get a random workflow from the database for demo purposes"""
+    try:
+        # Import database service
+        from src.utils.database_hybrid import db_service
+        
+        # Check if we're using a real database
+        if db_service.use_database:
+            # Fetch a random workflow
+            try:
+                # Get workflow count
+                response = db_service.client.table("workflow_rows").select("id").execute()
+                workflow_ids = [item['id'] for item in response.data] if response.data else []
+                
+                if workflow_ids:
+                    # Select a random workflow ID
+                    random_workflow_id = random.choice(workflow_ids)
+                    
+                    # Fetch the workflow
+                    workflow_response = db_service.client.table("workflow_rows").select("*").eq("id", random_workflow_id).execute()
+                    workflow_data = workflow_response.data[0] if workflow_response.data else None
+                    
+                    if workflow_data:
+                        # Fetch associated blocks
+                        blocks_response = db_service.client.table("workflow_blocks_rows").select("*").eq("workflow_id", random_workflow_id).execute()
+                        blocks_data = blocks_response.data if blocks_response.data else []
+                        
+                        return {
+                            "success": True,
+                            "workflow": workflow_data,
+                            "blocks": blocks_data
+                        }
+                    else:
+                        # Return mock data if no workflow found
+                        return await get_mock_workflow()
+                else:
+                    # Return mock data if no workflows found
+                    return await get_mock_workflow()
+            except Exception as e:
+                logger.warning(f"Database error fetching random workflow: {e}")
+                # Return mock data as fallback
+                return await get_mock_workflow()
+        else:
+            # Return mock data
+            return await get_mock_workflow()
+            
+    except Exception as e:
+        logger.error(f"Error fetching random workflow: {e}")
+        # Return mock data as fallback
+        return await get_mock_workflow()
+
+async def get_mock_workflow():
+    """Get mock workflow data for demo purposes"""
+    return {
+        "success": True,
+        "workflow": {
+            "id": "demo-trading-bot-001",
+            "user_id": "demo-user-123",
+            "workspace_id": "demo-workspace-456",
+            "name": "Demo Trading Bot",
+            "description": "Automated crypto trading bot with AI decision making and risk management",
+            "color": "#3972F6",
+            "variables": '{"trading_pair": "BTC/USD", "stop_loss": 0.02}',
+            "is_published": False,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+            "last_synced": datetime.utcnow().isoformat() + "Z",
+            "state": "{}"
+        },
+        "blocks": [
+            {
+                "id": "block-starter-001",
+                "workflow_id": "demo-trading-bot-001",
+                "type": "starter",
+                "name": "Start Trading Bot",
+                "position_x": 100,
+                "position_y": 100,
+                "enabled": True,
+                "horizontal_handles": True,
+                "is_wide": False,
+                "advanced_mode": False,
+                "height": 0,
+                "sub_blocks": {"startWorkflow": {"id": "startWorkflow", "type": "dropdown", "value": "manual"}, "scheduleType": {"id": "scheduleType", "type": "dropdown", "value": "daily"}},
+                "outputs": {"response": {"type": {"input": "any"}}},
+                "data": {},
+                "parent_id": None,
+                "extent": None,
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "updated_at": datetime.utcnow().isoformat() + "Z"
+            },
+            {
+                "id": "block-api-001",
+                "workflow_id": "demo-trading-bot-001",
+                "type": "api",
+                "name": "Fetch Market Data",
+                "position_x": 300,
+                "position_y": 100,
+                "enabled": True,
+                "horizontal_handles": True,
+                "is_wide": False,
+                "advanced_mode": False,
+                "height": 0,
+                "sub_blocks": {"url": {"id": "url", "type": "short-input", "value": "https://api.coingecko.com/api/v3/coins/bitcoin"}, "method": {"id": "method", "type": "dropdown", "value": "GET"}},
+                "outputs": {"data": "any", "status": "number", "headers": "json"},
+                "data": {},
+                "parent_id": None,
+                "extent": None,
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "updated_at": datetime.utcnow().isoformat() + "Z"
+            },
+            {
+                "id": "block-agent-001",
+                "workflow_id": "demo-trading-bot-001",
+                "type": "agent",
+                "name": "Trading Decision Agent",
+                "position_x": 500,
+                "position_y": 100,
+                "enabled": True,
+                "horizontal_handles": True,
+                "is_wide": False,
+                "advanced_mode": False,
+                "height": 0,
+                "sub_blocks": {"model": {"id": "model", "type": "combobox", "value": "gpt-4"}, "systemPrompt": {"id": "systemPrompt", "type": "long-input", "value": "You are a crypto trading agent. Analyze market data and make buy/sell decisions based on risk parameters."}},
+                "outputs": {"model": "string", "tokens": "any", "content": "string", "toolCalls": "any"},
+                "data": {"risk_tolerance": 0.02},
+                "parent_id": None,
+                "extent": None,
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "updated_at": datetime.utcnow().isoformat() + "Z"
+            }
+        ]
+    }
+
 @app.post("/generate-state")
 async def generate_state_demo(request: GenerateStateRequest):
     """
@@ -221,21 +356,8 @@ async def generate_state_demo(request: GenerateStateRequest):
             if not validation_result.is_valid:
                 logger.warning(f"⚠️ Validation warnings: {validation_result.warnings}")
             
-            return {
-                "success": True,
-                "workflow_id": request.workflow_id,
-                "generated_state": generated_state,
-                "validation": {
-                    "is_valid": validation_result.is_valid,
-                    "warnings": validation_result.warnings,
-                    "errors": validation_result.errors
-                },
-                "metadata": {
-                    "generation_method": "ai_agent",
-                    "blocks_processed": len(blocks_data),
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
-                }
-            }
+            # Return the generated state directly (as requested)
+            return generated_state
             
         except ImportError:
             logger.info("🔄 Using rule-based fallback for demo")
@@ -243,21 +365,8 @@ async def generate_state_demo(request: GenerateStateRequest):
             # Rule-based fallback generation
             generated_state = generate_state_rule_based(request.workflow_rows, request.blocks_rows)
             
-            return {
-                "success": True,
-                "workflow_id": request.workflow_id,
-                "generated_state": generated_state,
-                "validation": {
-                    "is_valid": True,
-                    "warnings": [],
-                    "errors": []
-                },
-                "metadata": {
-                    "generation_method": "rule_based_fallback",
-                    "blocks_processed": len(request.blocks_rows),
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
-                }
-            }
+            # Return the generated state directly (as requested)
+            return generated_state
             
     except Exception as e:
         logger.error(f"❌ Error generating state: {str(e)}")

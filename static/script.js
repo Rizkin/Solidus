@@ -203,7 +203,7 @@ function displayWorkflowStateResult(result) {
     
     outputDiv.innerHTML = `
         <div style="margin-bottom: 10px;">
-            <strong>✅ Success!</strong> Generated workflow state with ${result.generated_state ? Object.keys(result.generated_state.blocks).length : 0} blocks
+            <strong>✅ Success!</strong> Generated workflow state with ${result.blocks ? Object.keys(result.blocks).length : 0} blocks
         </div>
         ${formattedJson}
     `;
@@ -427,7 +427,7 @@ function removeBlock(button) {
     
     // Don't remove if it's the last block
     if (blocksContainer.children.length > 1) {
-    blockItem.remove();
+        blockItem.remove();
         
         // Renumber remaining blocks
         const remainingBlocks = blocksContainer.querySelectorAll('.block-item');
@@ -553,6 +553,144 @@ function clearForm() {
 
 // Load example data for demonstration
 function loadExample() {
+    // Fetch random workflow data from the API
+    fetch(`${API_BASE}/api/random-workflow`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Populate workflow data
+                const workflow = data.workflow;
+                document.getElementById('workflow_id').value = workflow.id;
+                document.getElementById('user_id').value = workflow.user_id;
+                document.getElementById('workflow_name').value = workflow.name;
+                document.getElementById('workspace_id').value = workflow.workspace_id || '';
+                document.getElementById('folder_id').value = workflow.folder_id || '';
+                document.getElementById('color').value = workflow.color || '#3972F6';
+                document.getElementById('description').value = workflow.description || '';
+                document.getElementById('variables').value = workflow.variables || '{}';
+                
+                // Clear existing blocks
+                const blocksContainer = document.getElementById('blocksContainer');
+                blocksContainer.innerHTML = '';
+                blockCounter = 0;
+                
+                // Add blocks
+                data.blocks.forEach((block, index) => {
+                    blockCounter++;
+                    const blockHtml = `
+                        <div class="block-item">
+                            <h4>Block ${blockCounter} <button type="button" class="remove-block" onclick="removeBlock(this)">Remove</button></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Block ID*</label>
+                                    <input type="text" name="block_id" value="${block.id}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Block Type*</label>
+                                    <select name="block_type" required>
+                                        <option value="starter" ${block.type === 'starter' ? 'selected' : ''}>starter</option>
+                                        <option value="agent" ${block.type === 'agent' ? 'selected' : ''}>agent</option>
+                                        <option value="api" ${block.type === 'api' ? 'selected' : ''}>api</option>
+                                        <option value="webhook" ${block.type === 'webhook' ? 'selected' : ''}>webhook</option>
+                                        <option value="action" ${block.type === 'action' ? 'selected' : ''}>action</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Block Name*</label>
+                                    <input type="text" name="block_name" value="${block.name}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Enabled</label>
+                                    <select name="enabled">
+                                        <option value="true" ${block.enabled ? 'selected' : ''}>true</option>
+                                        <option value="false" ${!block.enabled ? 'selected' : ''}>false</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Position X*</label>
+                                    <input type="number" name="position_x" value="${block.position_x}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Position Y*</label>
+                                    <input type="number" name="position_y" value="${block.position_y}" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Horizontal Handles</label>
+                                    <select name="horizontal_handles">
+                                        <option value="true" ${block.horizontal_handles ? 'selected' : ''}>true</option>
+                                        <option value="false" ${!block.horizontal_handles ? 'selected' : ''}>false</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Is Wide</label>
+                                    <select name="is_wide">
+                                        <option value="false" ${!block.is_wide ? 'selected' : ''}>false</option>
+                                        <option value="true" ${block.is_wide ? 'selected' : ''}>true</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Advanced Mode</label>
+                                    <select name="advanced_mode">
+                                        <option value="false" ${!block.advanced_mode ? 'selected' : ''}>false</option>
+                                        <option value="true" ${block.advanced_mode ? 'selected' : ''}>true</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Height</label>
+                                    <input type="number" name="height" value="${block.height}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Sub Blocks (JSON)</label>
+                                <textarea name="sub_blocks" placeholder='{"key": "value"}'>${JSON.stringify(block.sub_blocks || {}, null, 2)}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Outputs (JSON)</label>
+                                <textarea name="outputs" placeholder='{"key": "value"}'>${JSON.stringify(block.outputs || {}, null, 2)}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Data (JSON)</label>
+                                <textarea name="data" placeholder='{"key": "value"}'>${JSON.stringify(block.data || {}, null, 2)}</textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Parent ID</label>
+                                    <input type="text" name="parent_id" value="${block.parent_id || ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Extent</label>
+                                    <input type="text" name="extent" value="${block.extent || ''}">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    blocksContainer.insertAdjacentHTML('beforeend', blockHtml);
+                });
+                
+                console.log('📝 Loaded random workflow data from database');
+            } else {
+                // Fallback to default example data
+                loadDefaultExample();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading random workflow:', error);
+            // Fallback to default example data
+            loadDefaultExample();
+        });
+}
+
+// Load default example data (fallback)
+function loadDefaultExample() {
     // Set workflow data
     document.getElementById('workflow_id').value = 'demo-trading-bot-001';
     document.getElementById('user_id').value = 'demo-user-123';
@@ -862,5 +1000,5 @@ function loadExample() {
     blocksContainer.innerHTML = starterBlockHtml + apiBlockHtml + agentBlockHtml;
     blockCounter = 3;
     
-    console.log('📝 Loaded example trading bot workflow data');
+    console.log('📝 Loaded default example trading bot workflow data');
 } 
