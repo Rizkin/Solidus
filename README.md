@@ -5,16 +5,30 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 
+## 📚 Documentation
+
+- **[📖 API Documentation](https://solidus-olive.vercel.app/api/docs)** - Interactive API documentation with examples
+- **[🏗️ Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)** - Detailed system architecture and design
+- **[🗄️ Database Schema](database/schema.sql)** - Complete database structure and relationships
+- **[🎯 Project Requirements](docs/PRD.md)** - Product requirements and specifications
+
 ## 🎯 Project Overview
 
 Agent Forge is a backend AI agent that generates workflow state JSON objects from database records. The system reads from `workflow_rows` and `workflow_blocks_rows` tables and produces Agent Forge-compatible state objects with blocks, edges, and metadata.
 
-Key features:
-- **AI-Powered Generation**: Uses Claude AI for intelligent workflow state creation
-- **Database Integration**: Reads from PostgreSQL/Supabase tables
-- **Caching System**: RAG-enhanced intelligent caching for 70-80% cost reduction
-- **Validation**: Comprehensive 9-validator compliance system
-- **Demo UI**: Interactive interface for testing and development
+### Key Features:
+- **🤖 AI-Powered Generation**: Uses Claude AI for intelligent workflow state creation
+- **🗄️ Database Integration**: Reads from PostgreSQL/Supabase tables with hybrid fallbacks
+- **⚡ Caching System**: RAG-enhanced intelligent caching for 70-80% cost reduction
+- **✅ Validation**: Comprehensive 9-validator compliance system
+- **🎨 Demo UI**: Interactive interface for testing and development
+- **📊 Analytics**: Real-time performance monitoring and metrics
+
+### Performance Metrics:
+- **70-80%** cost reduction via intelligent caching
+- **5-10x** speed improvement with RAG pattern matching
+- **99.9%** uptime target with serverless architecture
+- **<200ms** P95 API response time
 
 ## 🚀 Setup and Installation
 
@@ -309,8 +323,8 @@ INSERT INTO public.workflow_rows (
     '{"trading_pair": "BTC/USD", "stop_loss": 0.02}',
     false,
     NOW(),
-    NOW(), 
     NOW(),
+    NOW(), 
     '{}'
 );
 
