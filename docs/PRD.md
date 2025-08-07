@@ -3,27 +3,38 @@
 
 ### **Document Information**
 - **Project**: Solidus - Agent Forge AI Workflow Automation Platform
-- **Version**: 1.0.0
-- **Date**: January 2024
+- **Version**: 2.0.0
+- **Date**: January 2025
 - **Technical Interview Alignment**: Fully Compliant + Enterprise Extensions
 - **Live Demo**: [https://solidus-olive.vercel.app/](https://solidus-olive.vercel.app/)
+- **API Docs**: [https://solidus-olive.vercel.app/api/docs](https://solidus-olive.vercel.app/api/docs)
+- **Technical Architecture**: [`docs/TECHNICAL_ARCHITECTURE.md`](./TECHNICAL_ARCHITECTURE.md)
 
 ---
 
 ## 📋 **Executive Summary**
 
-**Solidus** is a comprehensive AI-powered workflow automation platform that not only meets but significantly exceeds the technical interview requirements for an "AI Agent for Workflow State Generation." The platform transforms the basic requirement of database-to-JSON mapping into a full-featured enterprise solution with 13 professional templates, intelligent RAG caching, and beautiful user interfaces.
+**Solidus** is a comprehensive AI-powered workflow automation platform that not only meets but significantly exceeds the technical interview requirements for an "AI Agent for Workflow State Generation." The platform transforms the basic requirement of database-to-JSON mapping into a full-featured enterprise solution with 13 professional templates, intelligent RAG caching, analytics, and robust deployment automation.
 
 ### **Core Value Proposition**
-- ✅ **100% Requirement Compliance**: Meets all technical interview criteria
-- 🚀 **Enterprise Enhancement**: Adds 13 professional templates + advanced AI features  
-- 💰 **Cost Optimization**: 70-80% reduction in AI API costs through intelligent caching
-- 🎨 **User Experience**: Beautiful modern UI with real-time analytics
-- ⚡ **Performance**: 5-10x speed improvement through RAG-enhanced caching
+- ✅ **100% Requirement Compliance**
+- 🚀 **Enterprise Enhancements**: Templates, caching, analytics, migration
+- 💰 **Cost Optimization**: 70-80% reduction via RAG caching
+- 🎨 **User Experience**: Professional UI and documentation
+- ⚡ **Performance**: 5-10x faster with caching and views
 
 ---
 
-## 🎯 **Project Goals & Technical Interview Alignment**
+## 🏗️ Updates in v2.0
+- Enhanced API docs with examples, errors, SDKs, webhooks
+- Extended database schema: guideline tables, analytics tables, FKs, indexes, views, triggers
+- Synthetic dataset: 15 workflows / 60+ blocks / 150+ rows
+- Migration script: guideline → production with state JSON generation
+- Monitoring/analytics: cache and AI usage summaries
+
+---
+
+## 🎯 **Project Goals & Alignment**
 
 ### **Primary Goal (Required)**
 > *"Develop an AI agent capable of generating workflow `state` and `blocks` based on data from `workflow_blocks_rows` and `workflow_rows` database tables."*
@@ -43,6 +54,42 @@
 3. **Beautiful User Interface**: Modern responsive frontend with real-time analytics
 4. **Semantic Search**: Natural language workflow discovery
 5. **Enterprise Scalability**: Production-ready deployment on Vercel
+
+---
+
+## 🗄️ Database Schema (v2.0)
+- Adds `public.workflow_blocks_rows` (guideline input mirror)
+- Adds analytics tables: `cache_stats`, `ai_usage_logs`, `validation_logs`
+- Adds `users`, `workspaces`, `workflow_folders` for relational integrity
+- Performance indexes for hot queries
+- Views: `workflow_summary`, `cache_performance`, `ai_usage_summary`
+- Triggers for automatic `updated_at` maintenance
+
+## 🔄 Migration
+- Script: `database/migration.sql`
+- Steps:
+  - Copy `workflow_blocks_rows` → `public.workflow_blocks`
+  - Generate state JSON per workflow via function `generate_workflow_state(workflow_id)`
+  - Populate `public.workflow` with generated state and metadata
+  - Populate cache lookup and analytics logs
+  - Emit validation and final migration reports
+
+## 📊 Synthetic Data
+- File: `database/synthetic-data.sql`
+- Scope: 10 users, 5 workspaces, 15 workflows, 60+ blocks
+- Domains: trading, marketing, research, fintech, operations
+
+## 📚 Documentation
+- Live API docs: `https://solidus-olive.vercel.app/api/docs`
+- In-repo: `api/docs/enhanced-documentation.md` (v2.0)
+- Architecture: `docs/TECHNICAL_ARCHITECTURE.md`
+
+## ✅ Acceptance Criteria
+- API docs comprehensive and live
+- DB schema deployed with FKs/indexes/views
+- 50+ synthetic entries inserted
+- Production tables populated from guideline tables
+- All changes committed and verified
 
 ---
 

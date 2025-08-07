@@ -1,6 +1,6 @@
 # Technical Architecture - Agent Forge Platform
 
-**System Architecture Documentation v2.0**
+**System Architecture Documentation v2.0 (Updated 2025-01)**
 
 ---
 
@@ -82,10 +82,14 @@ graph TB
 - **Embeddings**: OpenAI text-embedding-3-small
 - **Fallback**: Rule-based pattern generation
 
-### Data Layer
+### Data Layer (v2.0)
 - **Primary**: Supabase PostgreSQL with pgvector
-- **Fallback**: In-memory mock database
-- **Caching**: Multi-level (memory, database, CDN)
+- **Guideline Tables**: `workflow_rows`, `workflow_blocks_rows`
+- **Production Tables**: `workflow`, `workflow_blocks`
+- **Analytics**: `cache_stats`, `ai_usage_logs`, `validation_logs`
+- **Org**: `users`, `workspaces`, `workflow_folders`
+- **Views**: `workflow_summary`, `cache_performance`, `ai_usage_summary`
+- **Triggers**: Auto-maintain `updated_at`
 
 ---
 
@@ -120,34 +124,46 @@ sequenceDiagram
 
 ---
 
-## AI Integration Architecture
-
-### Multi-Provider System
-
-| Provider | Use Case | Fallback |
-|----------|----------|----------|
-| Claude | Workflow generation | Rule-based |
-| OpenAI | Embeddings | Text similarity |
-| Rule-based | System fallback | N/A |
-
-### Cost Optimization
-- RAG cache hit rate: 70-80%
-- Token usage reduction: 70-80%
-- Response time improvement: 5-10x
-
----
-
-## Database Schema
+## Database Schema (v2.0)
 
 ```mermaid
 erDiagram
+    USERS {
+        text id PK
+        text email
+        text name
+        text plan_type
+    }
+    WORKSPACES {
+        text id PK
+        text owner_id FK
+        text name
+    }
+    WORKFLOW_ROWS {
+        text id PK
+        text user_id FK
+        text workspace_id FK
+        text name
+        json state
+        timestamp created_at
+    }
+    WORKFLOW_BLOCKS_ROWS {
+        text id PK
+        text workflow_id FK
+        text type
+        jsonb sub_blocks
+        jsonb outputs
+        jsonb data
+        numeric position_x
+        numeric position_y
+        text parent_id FK
+    }
     WORKFLOW {
         text id PK
         text name
         json state
         timestamp created_at
     }
-    
     WORKFLOW_BLOCKS {
         text id PK
         text workflow_id FK
@@ -155,8 +171,8 @@ erDiagram
         jsonb data
         numeric position_x
         numeric position_y
+        text parent_id FK
     }
-    
     WORKFLOW_LOOKUP {
         uuid id PK
         text lookup_key
@@ -164,7 +180,6 @@ erDiagram
         vector embedding
         integer usage_count
     }
-    
     CACHE_STATS {
         uuid id PK
         text cache_type
@@ -172,172 +187,56 @@ erDiagram
         integer miss_count
         float hit_rate
     }
-    
     AI_USAGE_LOGS {
         uuid id PK
+        text workflow_id FK
         text provider
         text model
         integer token_count
         float cost_estimate
         timestamp created_at
     }
-    
+    VALIDATION_LOGS {
+        uuid id PK
+        text workflow_id FK
+        text validation_type
+        boolean passed
+        float score
+        timestamp created_at
+    }
+
+    USERS ||--o{ WORKSPACES : owns
+    WORKSPACES ||--o{ WORKFLOW_ROWS : contains
+    WORKFLOW_ROWS ||--o{ WORKFLOW_BLOCKS_ROWS : has
     WORKFLOW ||--o{ WORKFLOW_BLOCKS : has
     WORKFLOW ||--o{ WORKFLOW_LOOKUP : cached
 ```
 
-### Core Tables
-- **workflow**: Main workflow storage with JSON state
-- **workflow_blocks**: Block-level data with positions
-- **workflow_lookup**: RAG patterns with embeddings
-- **cache_stats**: Performance metrics
-- **ai_usage_logs**: AI provider usage tracking
+---
+
+## Migration & Population
+- Script: `database/migration.sql`
+- Function `generate_workflow_state(workflow_id)` assembles blocks/edges/metadata
+- Copies guideline tables → production tables
+- Populates cache lookup and analytics logs
+- Emits validation and final reports
+
+## Synthetic Data
+- File: `database/synthetic-data.sql`
+- 10 users, 5 workspaces, 15 workflows, 60+ blocks, analytics samples
+
+## Monitoring & Analytics
+- Views for summaries, performance dashboards
+- Metrics: P95 latency, cache hit rate, AI cost/time
+
+## Security
+- Rate limiting, CORS, header hardening
+- Secrets via env vars
+
+## Links
+- **API Docs**: https://solidus-olive.vercel.app/api/docs
+- **PRD**: `docs/PRD.md`
 
 ---
 
-## API Architecture
-
-### Endpoint Categories
-
-| Category | Endpoints | Purpose |
-|----------|-----------|---------|
-| Core | `/api/workflows/*` | CRUD operations |
-| Templates | `/api/templates/*` | Template management |
-| Generation | `/api/workflows/{id}/generate-state` | AI generation |
-| Validation | `/api/workflows/{id}/validate` | Compliance check |
-| Search | `/api/workflows/semantic-search` | Semantic queries |
-| Analytics | `/api/workflows/cache/stats` | Performance data |
-
-### Response Caching
-- Templates: 1 hour
-- Workflows: 1 minute  
-- Analytics: 30 seconds
-- Generation: No cache
-
----
-
-## Caching Architecture
-
-```mermaid
-graph TB
-    REQUEST[Request] --> CACHE_CHECK{Cache Hit?}
-    
-    CACHE_CHECK -->|Hit 70-80%| L1[Memory Cache]
-    CACHE_CHECK -->|Miss 20-30%| AI_PROC[AI Processing]
-    
-    L1 --> L2[Database Cache]
-    L2 --> L3[CDN Cache]
-    
-    AI_PROC --> CLAUDE[Claude]
-    AI_PROC --> OPENAI[OpenAI]
-    AI_PROC --> STORE[Store Result]
-    
-    STORE --> L1
-```
-
-### Cache Levels
-1. **L1 Memory**: Hot patterns, <100ms
-2. **L2 Database**: Historical patterns, <50ms  
-3. **L3 CDN**: Static assets, edge cached
-
-### Performance Metrics
-- Hit rate: 70-80%
-- Miss penalty: 5-10x slower
-- Cost reduction: 70-80%
-
----
-
-## Security Architecture
-
-### Security Layers
-- **Network**: TLS 1.3, HSTS headers
-- **API**: Rate limiting, CORS validation
-- **Data**: Encryption at rest and transit
-- **Secrets**: Environment variable isolation
-- **AI**: Input validation, output filtering
-
-### Implementation
-- WAF protection via Vercel
-- API keys in environment variables
-- Pydantic schema validation
-- Structured audit logging
-
----
-
-## Deployment Architecture
-
-### Serverless Stack
-- **Platform**: Vercel Edge Network
-- **Functions**: Auto-scaling serverless
-- **Database**: Supabase PostgreSQL
-- **CDN**: Global edge caching
-
-### CI/CD Pipeline
-```mermaid
-graph LR
-    CODE[Git Push] --> BUILD[Vercel Build]
-    BUILD --> TEST[Health Check]
-    TEST --> DEPLOY[Edge Deploy]
-    DEPLOY --> MONITOR[Monitoring]
-```
-
-### Environment Configuration
-- **Production**: Full AI integration
-- **Preview**: Branch deployments
-- **Development**: Mock data fallbacks
-
----
-
-## Performance Monitoring
-
-### Key Metrics
-- **API Response Time**: P95 < 200ms
-- **Database Query Time**: P95 < 50ms
-- **AI Generation Time**: P95 < 5s
-- **Cache Hit Rate**: > 70%
-
-### Monitoring Stack
-- **Logs**: Structured JSON logging
-- **Metrics**: Vercel Analytics
-- **Alerts**: Error rate thresholds
-- **Traces**: Request flow tracking
-
-### Analytics Tables
-- `cache_stats`: Hit/miss ratios by type
-- `ai_usage_logs`: Token usage and costs
-
----
-
-## Integration Points
-
-### External Services
-- **Supabase**: Primary database with pgvector
-- **Anthropic**: Claude API for generation
-- **OpenAI**: Embeddings API for RAG
-- **Vercel**: Hosting and edge network
-
-### Fallback Strategy
-- Database: Supabase → Mock data
-- AI: Claude → OpenAI → Rule-based
-- Cache: Memory → Database → Miss
-
----
-
-## Technical Specifications
-
-### Technology Stack
-- **Runtime**: Python 3.11+
-- **Framework**: FastAPI with Uvicorn
-- **Database**: PostgreSQL with pgvector
-- **AI**: Claude 3.5 Sonnet, OpenAI embeddings
-- **Deployment**: Vercel serverless functions
-
-### Performance Targets
-- **Availability**: 99.9% uptime
-- **Latency**: P95 < 200ms API response
-- **Throughput**: 1000+ requests/minute
-- **Cost**: <$0.01 per workflow generation
-
----
-
-*Architecture v2.0 | Updated 2024* 
+*Architecture v2.0 | Updated 2025-01* 

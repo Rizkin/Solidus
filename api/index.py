@@ -12,7 +12,9 @@ class handler(BaseHTTPRequestHandler):
         
         # Set response headers
         self.send_response(200)
-        self.send_header('Content-type', 'application/json' if not path.endswith('/docs') else 'text/html')
+        # Ensure correct UTF-8 content type to avoid mojibake on emojis
+        is_docs = path.startswith('/api/docs')
+        self.send_header('Content-type', 'text/html; charset=utf-8' if is_docs else 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         
@@ -25,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
                 "version": "1.0.0",
                 "api_ready": True
             }
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps(response).encode('utf-8'))
             
         elif '/api/docs' in path:
             # Enhanced API documentation page
@@ -33,6 +35,7 @@ class handler(BaseHTTPRequestHandler):
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>Agent Forge API Documentation</title>
     <style>
         body { 
@@ -683,7 +686,7 @@ curl -X POST https://solidus-olive.vercel.app/generate-state \\
     </div>
 </body>
 </html>"""
-            self.wfile.write(html_docs.encode())
+            self.wfile.write(html_docs.encode('utf-8'))
             
         elif '/api/health' in path:
             # Health check with monitoring info
@@ -695,7 +698,7 @@ curl -X POST https://solidus-olive.vercel.app/generate-state \\
                 "message": "All systems operational",
                 "uptime": "continuous"
             }
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps(response).encode('utf-8'))
             
         elif '/api/templates' in path:
             # Professional templates
@@ -734,7 +737,7 @@ curl -X POST https://solidus-olive.vercel.app/generate-state \\
                 "message": "Professional workflow templates available",
                 "api_version": "1.0.0"
             }
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps(response).encode('utf-8'))
             
         else:
             # Default response for other paths
@@ -745,7 +748,7 @@ curl -X POST https://solidus-olive.vercel.app/generate-state \\
                 "documentation": "/api/docs",
                 "status": "ready"
             }
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps(response).encode('utf-8'))
             
     def do_POST(self):
         self.do_GET()  # Handle POST same as GET for now
