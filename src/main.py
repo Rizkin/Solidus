@@ -356,11 +356,16 @@ async def health_check():
         }
     }
 
-# Redirect /frontend to main frontend if it exists
-@app.get("/frontend")
-async def redirect_to_frontend():
-    """Redirect to main frontend"""
-    return RedirectResponse(url="/frontend/")
+# Redirect /frontend to /demo
+@app.get("/frontend", include_in_schema=False)
+async def redirect_frontend():
+    """Redirect /frontend to /demo"""
+    return RedirectResponse(url="/demo")
+
+@app.get("/frontend/", include_in_schema=False)
+async def redirect_frontend_slash():
+    """Redirect /frontend/ to /demo"""
+    return RedirectResponse(url="/demo")
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

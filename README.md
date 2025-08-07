@@ -42,14 +42,13 @@ Ready-to-deploy workflow templates across **13 categories**:
 5. **Web3 DeFi Automation** (Blockchain) - Smart contract monitoring
 6. **Data Processing Pipeline** (Data Processing) - ETL and transformation
 7. **Content Generation System** (Content & Media) - AI-powered writing
-8. **Multi-Channel Notifications** (Communication) - Intelligent alerting
 
 #### **🆕 New Templates**
-9. **Social Media Automation** (Social Media) - Content creation & scheduling
-10. **E-commerce Order Automation** (E-commerce) - Order processing & inventory
-11. **HR Recruitment System** (Human Resources) - Resume screening & interviews
-12. **Financial Analysis & Reporting** (Finance) - Market analysis & insights
-13. **Project Management Automation** (Project Management) - Task assignment & tracking
+8. **Social Media Automation** (Social Media) - Content creation & scheduling
+9. **E-commerce Order Automation** (E-commerce) - Order processing & inventory
+10. **HR Recruitment System** (Human Resources) - Resume screening & interviews
+11. **Financial Analysis & Reporting** (Finance) - Market analysis & insights
+12. **Project Management Automation** (Project Management) - Task assignment & tracking
 
 ### 🤖 **AI-Powered Generation**
 - **Claude AI Integration**: Advanced workflow state generation using Anthropic's Claude
@@ -675,6 +674,8 @@ curl -X POST https://solidus-olive.vercel.app/api/workflows/semantic-search \
 2. **Input Data**: Fill workflow_rows and workflow_blocks_rows forms
 3. **Generate**: Click "Generate Workflow State" to see JSON output
 4. **Examples**: Use "Load Example Data" for pre-filled trading bot workflow
+5. **SQL Generation**: View generated SQL INSERT statements for database integration
+6. **Validation**: Check validation results to ensure workflow compliance
 
 ## 🚀 **Deployment**
 

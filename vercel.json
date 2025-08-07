@@ -23,11 +23,11 @@
     },
     {
       "src": "/frontend$",
-      "dest": "/frontend/index.html"
+      "dest": "/demo"
     },
     {
       "src": "/frontend/$", 
-      "dest": "/frontend/index.html"
+      "dest": "/demo"
     },
     {
       "src": "^/$",
