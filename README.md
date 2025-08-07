@@ -66,7 +66,7 @@ docker run -p 8000:8000 agent-forge
 
 ### Sample API Request
 ```bash
-curl -X POST "http://localhost:8000/generate-state" \
+curl -X POST "https://solidus-olive.vercel.app/generate-state" \
   -H "Content-Type: application/json" \
   -d '{
     "workflow_id": "demo-workflow-001",
