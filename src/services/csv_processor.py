@@ -281,7 +281,7 @@ class CSVProcessor:
                 'height': 0,
                 'sub_blocks': {
                     "model": {"id": "model", "type": "combobox", "value": "gemini-2.5-pro"},
-                    "tools": {"id": "tools", "type": "tool-input", "value": [{"type": "elevenlabs", "title": "ElevenLabs", "params": {"apiKey": "sk_539725a6d8b99b16a11467e7b1cb7d514233f90a58dc4823", "voiceId": "Xb7hH8MSUJpSbSDYk0k2"}, "isExpanded": True, "usageControl": "auto"}]},
+                    "tools": {"id": "tools", "type": "tool-input", "value": [{"type": "elevenlabs", "title": "ElevenLabs", "params": {"apiKey": "", "voiceId": "Xb7hH8MSUJpSbSDYk0k2"}, "isExpanded": True, "usageControl": "auto"}]},
                     "systemPrompt": {"id": "systemPrompt", "type": "long-input", "value": "You are an assistant that transitions what the user says into text to speech using elevenlabs and sends them the URL to the output."},
                     "userPrompt": {"id": "userPrompt", "type": "long-input", "value": "<start>"},
                     "temperature": {"id": "temperature", "type": "slider", "value": None}
